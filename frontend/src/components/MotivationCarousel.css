@@ -1,0 +1,95 @@
+.motivation-panel {
+  padding: 2rem 1rem 2rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.motivation-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(255, 159, 67, 0.15);
+  border: 1px solid rgba(255, 159, 67, 0.1);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.carousel-images {
+  width: 100%;
+  height: 220px;
+  position: relative;
+  background-color: #f5f5f5;
+}
+
+.carousel-images .motivation-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+}
+
+.carousel-images .motivation-img.active {
+  opacity: 1;
+}
+
+.motivation-text-container {
+  position: relative;
+  min-height: 140px; /* Give enough space so height doesn't jump */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.motivation-text {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+  pointer-events: none;
+  width: 100%;
+  padding: 0 1.5rem;
+}
+
+.motivation-text.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.motivation-text h3 {
+  color: var(--primary-dark);
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.motivation-text p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.carousel-indicators {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding-bottom: 1.5rem;
+}
+
+.indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 159, 67, 0.3);
+  cursor: pointer;
+  transition: background 0.3s, transform 0.3s;
+}
+
+.indicator.active {
+  background: var(--primary-color);
+  transform: scale(1.3);
+}
