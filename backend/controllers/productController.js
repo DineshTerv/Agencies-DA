@@ -1,14 +1,14 @@
-const db = require('../db');
+const Product = require('../models/Product');
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const [rows] = await db.query(`
-      SELECT p.*, c.name as category_name 
-      FROM products p 
-      LEFT JOIN categories c ON p.category_id = c.id
-      ORDER BY p.created_at DESC
-    `);
-    res.json(rows);
+    const products = await Product.find().sort({ createdAt: -1 });
+    const formattedProducts = products.map(p => {
+      const pObj = p.toObject();
+      pObj.id = p._id.toString(); // Map _id to id for frontend compatibility
+      return pObj;
+    });
+    res.json(formattedProducts);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error fetching products' });
@@ -16,11 +16,12 @@ exports.getAllProducts = async (req, res) => {
 };
 
 exports.getProductById = async (req, res) => {
-  const { id } = req.params;
   try {
-    const [rows] = await db.query('SELECT * FROM products WHERE id = ?', [id]);
-    if (rows.length === 0) return res.status(404).json({ message: 'Product not found' });
-    res.json(rows[0]);
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+    const pObj = product.toObject();
+    pObj.id = pObj._id.toString();
+    res.json(pObj);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error fetching product' });
@@ -28,13 +29,12 @@ exports.getProductById = async (req, res) => {
 };
 
 exports.createProduct = async (req, res) => {
-  const { category_id, name, description, price, image_url, stock, is_active } = req.body;
   try {
-    const [result] = await db.query(
-      'INSERT INTO products (category_id, name, description, price, image_url, stock, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [category_id, name, description, price, image_url, stock || 0, is_active !== undefined ? is_active : true]
-    );
-    res.status(201).json({ id: result.insertId, message: 'Product created successfully' });
+    const newProduct = new Product(req.body);
+    const savedProduct = await newProduct.save();
+    const pObj = savedProduct.toObject();
+    pObj.id = pObj._id.toString();
+    res.status(201).json(pObj);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error creating product' });
@@ -42,14 +42,12 @@ exports.createProduct = async (req, res) => {
 };
 
 exports.updateProduct = async (req, res) => {
-  const { id } = req.params;
-  const { category_id, name, description, price, image_url, stock, is_active } = req.body;
   try {
-    await db.query(
-      'UPDATE products SET category_id = ?, name = ?, description = ?, price = ?, image_url = ?, stock = ?, is_active = ? WHERE id = ?',
-      [category_id, name, description, price, image_url, stock, is_active, id]
-    );
-    res.json({ message: 'Product updated successfully' });
+    const updatedProduct = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedProduct) return res.status(404).json({ message: 'Product not found' });
+    const pObj = updatedProduct.toObject();
+    pObj.id = pObj._id.toString();
+    res.json(pObj);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error updating product' });
@@ -57,9 +55,9 @@ exports.updateProduct = async (req, res) => {
 };
 
 exports.deleteProduct = async (req, res) => {
-  const { id } = req.params;
   try {
-    await db.query('DELETE FROM products WHERE id = ?', [id]);
+    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+    if (!deletedProduct) return res.status(404).json({ message: 'Product not found' });
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
     console.error(error);
