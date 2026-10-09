@@ -180,8 +180,16 @@ function AppContent() {
       {/* ── MAIN CONTENT ── */}
       <main className="main-body">
         <Routes>
-          <Route path="/" element={<Home addToCart={addToCart} searchQuery={searchQuery} cartItems={cartItems} setCartItems={setCartItems} />} />
-          <Route path="/cart" element={<Cart cartItems={cartItems} setCartItems={setCartItems} />} />
+          <Route path="/" element={
+            localStorage.getItem('authToken') || localStorage.getItem('adminToken') || localStorage.getItem('workerToken')
+              ? <Home addToCart={addToCart} searchQuery={searchQuery} cartItems={cartItems} setCartItems={setCartItems} />
+              : <Navigate to="/login" replace />
+          } />
+          <Route path="/cart" element={
+            localStorage.getItem('authToken') || localStorage.getItem('adminToken') || localStorage.getItem('workerToken')
+              ? <Cart cartItems={cartItems} setCartItems={setCartItems} />
+              : <Navigate to="/login" replace />
+          } />
 
           {/* User / Customer Login & ID Creation */}
           <Route path="/login" element={<AuthPage />} />
