@@ -63,6 +63,18 @@ exports.updateOrderStatus = async (req, res) => {
   }
 };
 
+exports.assignWorker = async (req, res) => {
+  const { id } = req.params;
+  const { worker_id } = req.body;
+  try {
+    await Order.findByIdAndUpdate(id, { worker_assigned: worker_id });
+    res.json({ message: 'Worker assigned successfully' });
+  } catch (error) {
+    console.error('Error assigning worker:', error);
+    res.status(500).json({ message: 'Server error assigning worker' });
+  }
+};
+
 exports.deleteOrder = async (req, res) => {
   const { id } = req.params;
   try {

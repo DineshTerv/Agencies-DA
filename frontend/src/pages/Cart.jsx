@@ -63,30 +63,32 @@ const Cart = ({ cartItems, setCartItems }) => {
       }))
     };
 
-    // 1. Save to localStorage for instant synchronization with Admin & Worker
-    try {
-      const existingOrders = JSON.parse(localStorage.getItem('da_orders') || '[]');
-      const updatedOrders = [orderPayload, ...existingOrders];
-      localStorage.setItem('da_orders', JSON.stringify(updatedOrders));
-    } catch (e) {
-      console.error('LocalStorage write error:', e);
-    }
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-    // 2. Send to backend MySQL API
     try {
-      await axios.post('http://localhost:5000/api/orders', {
+      const res = await axios.post(`${API_URL}/orders`, {
         customer_name: formData.name,
         customer_phone: formData.phone,
         customer_address: formData.address,
         total_amount: totalAmount,
-        items: cartItems.map(i => ({ product_id: i.id, quantity: i.quantity, price: i.price }))
+        items: cartItems.map(i => ({ product_id: i.id, name: i.name, quantity: i.quantity, price: i.price }))
       });
+      setOrderPlacedData({
+        id: res.data.orderId || newOrderId,
+        customer_name: formData.name,
+        customer_phone: formData.phone,
+        customer_address: formData.address,
+        total_amount: totalAmount,
+        status: 'PENDING',
+        created_at: now.toLocaleString(),
+        items: cartItems
+      });
+      setCartItems([]);
     } catch (err) {
-      console.warn("Backend API notice: order saved locally.", err.message);
+      console.error("API error:", err.message);
+      alert("Failed to send order to the server! Please try again.");
     }
 
-    setOrderPlacedData(orderPayload);
-    setCartItems([]);
     setIsSubmitting(false);
   };
 

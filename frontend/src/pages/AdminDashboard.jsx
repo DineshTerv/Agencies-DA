@@ -90,52 +90,33 @@ const AdminDashboard = () => {
 
   const navigate = useNavigate();
 
-  // Load live orders from backend + localStorage
-  const loadOrders = async () => {
-    let combined = [];
-    
-    // 1. Read from localStorage
-    try {
-      const local = JSON.parse(localStorage.getItem('da_orders') || '[]');
-      if (local && local.length > 0) {
-        combined = [...local];
-      }
-    } catch (e) {
-      console.error(e);
-    }
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-    // 2. Fetch from backend MySQL API if running
+  const loadOrders = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/orders');
-      if (res.data && res.data.length > 0) {
-        // Merge without duplicating IDs
-        const existingIds = new Set(combined.map(o => String(o.id)));
-        res.data.forEach(order => {
-          if (!existingIds.has(String(order.id))) {
-            combined.push({
-              id: order.id,
-              customer_name: order.customer_name,
-              customer_phone: order.customer_phone,
-              customer_address: order.customer_address,
-              total_amount: order.total_amount,
-              status: order.status,
-              created_at: new Date(order.created_at).toLocaleString(),
-              items: order.items || []
-            });
-          }
-        });
+      const res = await axios.get(`${API_URL}/orders`);
+      if (res.data) {
+        const formatted = res.data.map(order => ({
+          ...order,
+          created_at: new Date(order.created_at).toLocaleString(),
+          items: order.items || []
+        }));
+        setOrders(formatted);
       }
     } catch (err) {
-      console.warn("Backend API not reachable, using synced local orders:", err.message);
+      console.error("Error fetching orders:", err.message);
+      setOrders(INITIAL_DEMO_ORDERS);
     }
+  };
 
-    // 3. Fallback demo orders if completely empty
-    if (combined.length === 0) {
-      combined = INITIAL_DEMO_ORDERS;
-      localStorage.setItem('da_orders', JSON.stringify(combined));
+  const loadProducts = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/products`);
+      if (res.data) setProducts(res.data);
+    } catch (err) {
+      console.error("Error fetching products:", err.message);
+      setProducts(PRODUCTS_DATA);
     }
-
-    setOrders(combined);
   };
 
   useEffect(() => {
@@ -143,12 +124,7 @@ const AdminDashboard = () => {
       navigate('/login');
     }
     loadOrders();
-    const savedProducts = localStorage.getItem('da_products');
-    if (savedProducts) {
-      setProducts(JSON.parse(savedProducts));
-    } else {
-      setProducts(PRODUCTS_DATA);
-    }
+    loadProducts();
   }, [navigate]);
 
   const handleLogout = () => {
@@ -156,73 +132,47 @@ const AdminDashboard = () => {
     navigate('/login');
   };
 
-  // Update order status
   const handleStatusChange = async (orderId, newStatus) => {
-    let targetOrder = null;
-    const updated = orders.map(o => {
-      if (o.id === orderId) {
-        targetOrder = o;
-        return { ...o, status: newStatus };
-      }
-      return o;
-    });
+    const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
     setOrders(updated);
-    localStorage.setItem('da_orders', JSON.stringify(updated));
-
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder({ ...selectedOrder, status: newStatus });
     }
 
-    if (newStatus === 'DELIVERED' && targetOrder) {
-      // Deduct stock upon delivery
-      let lowStockAlerts = [];
-      const updatedProducts = products.map(p => {
-        const orderedItem = targetOrder.items.find(i => i.id === p.id || i.product_id === p.id);
-        if (orderedItem) {
-           const newStock = Math.max(0, Number(p.stock || 0) - orderedItem.quantity);
-           if (newStock < 10) lowStockAlerts.push(`${p.name} (${newStock} units left)`);
-           return { ...p, stock: newStock };
-        }
-        return p;
-      });
-      setProducts(updatedProducts);
-      localStorage.setItem('da_products', JSON.stringify(updatedProducts));
-
-      if (lowStockAlerts.length > 0) {
-        alert(`Stock Deducted.\n\nLow Stock Alert triggered for:\n${lowStockAlerts.join('\n')}\n\nSystem has sent a re-order alert email to: dineshnallathambi2001@gmail.com`);
-      }
-    }
-
     try {
-      await axios.put(`http://localhost:5000/api/orders/${orderId}/status`, { status: newStatus });
+      await axios.put(`${API_URL}/orders/${orderId}/status`, { status: newStatus });
+      // Reload products if delivered, because stock might have been deducted by backend
+      if (newStatus === 'DELIVERED') {
+         loadProducts();
+      }
     } catch (e) {
-      console.warn('API update failed, updated locally.');
+      console.error('API update failed', e);
     }
   };
 
-  const handleWorkerAssign = (orderId, workerId) => {
+  const handleWorkerAssign = async (orderId, workerId) => {
     const updated = orders.map(o => o.id === orderId ? { ...o, worker_assigned: workerId } : o);
     setOrders(updated);
-    localStorage.setItem('da_orders', JSON.stringify(updated));
-
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder({ ...selectedOrder, worker_assigned: workerId });
     }
+    
+    try {
+      await axios.put(`${API_URL}/orders/${orderId}/assign`, { worker_id: workerId });
+    } catch (e) {
+      console.error('API update failed', e);
+      alert('Failed to assign worker to order on backend.');
+    }
   };
 
-  // Delete an order
   const handleDeleteOrder = async (orderId) => {
     if (window.confirm(`Are you sure you want to delete Order #${orderId}?`)) {
-      const updated = orders.filter(o => o.id !== orderId);
-      setOrders(updated);
-      localStorage.setItem('da_orders', JSON.stringify(updated));
-      if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder(null);
-      }
+      setOrders(orders.filter(o => o.id !== orderId));
+      if (selectedOrder && selectedOrder.id === orderId) setSelectedOrder(null);
       try {
-        await axios.delete(`http://localhost:5000/api/orders/${orderId}`);
+        await axios.delete(`${API_URL}/orders/${orderId}`);
       } catch (e) {
-        console.warn('API delete failed, deleted locally.');
+        console.error('API delete failed', e);
       }
     }
   };
@@ -239,15 +189,19 @@ const AdminDashboard = () => {
 
   const handleProductSubmit = async (e) => {
     e.preventDefault();
-    let updatedProducts;
-    if (currentProduct.id) {
-      updatedProducts = products.map(p => p.id === currentProduct.id ? { ...currentProduct, category_name: p.category_name || "General" } : p);
-    } else {
-      updatedProducts = [...products, { ...currentProduct, id: Date.now(), category_name: "General" }];
+    try {
+      const payload = { ...currentProduct, category_name: currentProduct.category_name || "General" };
+      if (currentProduct.id) {
+        await axios.put(`${API_URL}/products/${currentProduct.id}`, payload);
+      } else {
+        await axios.post(`${API_URL}/products`, payload);
+      }
+      loadProducts();
+      setIsProductModalOpen(false);
+    } catch (error) {
+      console.error("Failed to save product", error);
+      alert("Failed to save product to database.");
     }
-    setProducts(updatedProducts);
-    localStorage.setItem('da_products', JSON.stringify(updatedProducts));
-    setIsProductModalOpen(false);
   };
 
   const handleWorkerSubmit = (e) => {
@@ -257,11 +211,14 @@ const AdminDashboard = () => {
     setIsWorkerModalOpen(false);
   };
 
-  const deleteProduct = (id) => {
+  const deleteProduct = async (id) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      const updatedProducts = products.filter(p => p.id !== id);
-      setProducts(updatedProducts);
-      localStorage.setItem('da_products', JSON.stringify(updatedProducts));
+      try {
+        await axios.delete(`${API_URL}/products/${id}`);
+        setProducts(products.filter(p => p.id !== id));
+      } catch (error) {
+        console.error("Failed to delete product", error);
+      }
     }
   };
 
@@ -510,6 +467,7 @@ const AdminDashboard = () => {
                       <th>Total (₹)</th>
                       <th>Date / Time</th>
                       <th>Status</th>
+                      <th>Worker</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -563,6 +521,18 @@ const AdminDashboard = () => {
                           </select>
                         </td>
                         <td>
+                          <select 
+                            style={{ padding: '6px', borderRadius: '15px', border: '1px solid #ddd', fontSize: '0.85rem' }}
+                            value={order.worker_assigned || ''}
+                            onChange={e => handleWorkerAssign(order.id, e.target.value)}
+                          >
+                            <option value="">Unassigned</option>
+                            {workers.map(w => (
+                              <option key={w.id} value={w.id}>{w.name} ({w.id})</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
                           <div className="action-buttons">
                             <button 
                               className="icon-btn" 
@@ -599,17 +569,27 @@ const AdminDashboard = () => {
                 <button 
                   className="add-btn" 
                   style={{ background: '#4cd137' }}
-                  onClick={() => {
+                  onClick={async () => {
+                    let promises = [];
                     const updated = products.map(p => {
                       const inputEl = document.getElementById(`stock-input-${p.id}`);
                       if (inputEl) {
-                        return { ...p, stock: Number(inputEl.value) };
+                        const newStock = Number(inputEl.value);
+                        if (newStock !== p.stock) {
+                          promises.push(axios.put(`${API_URL}/products/${p.id}`, { ...p, stock: newStock }));
+                        }
+                        return { ...p, stock: newStock };
                       }
                       return p;
                     });
                     setProducts(updated);
-                    localStorage.setItem('da_products', JSON.stringify(updated));
-                    alert("All stock changes saved successfully!");
+                    try {
+                      await Promise.all(promises);
+                      alert("All stock changes saved to the live database successfully!");
+                    } catch (e) {
+                      console.error(e);
+                      alert("Some stock updates failed to save to the database.");
+                    }
                   }}
                 >
                   <Plus size={18} /> Save All Stock

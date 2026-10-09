@@ -18,12 +18,19 @@ const WorkerDashboard = () => {
   const [orderView, setOrderView] = useState('catalog'); // 'catalog' or 'cart'
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Rest of the hooks and functions remain same
-  const loadDeliveries = () => {
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+  const loadDeliveries = async () => {
     const wId = localStorage.getItem('workerId');
-    const allOrders = JSON.parse(localStorage.getItem('da_orders') || '[]');
-    const myDeliveries = allOrders.filter(o => o.worker_assigned === wId);
-    setDeliveries(myDeliveries);
+    try {
+      const res = await axios.get(`${API_URL}/orders`);
+      if (res.data) {
+        const myDeliveries = res.data.filter(o => o.worker_assigned === wId);
+        setDeliveries(myDeliveries);
+      }
+    } catch (e) {
+      console.error("Failed to fetch deliveries", e);
+    }
   };
 
   useEffect(() => {
@@ -32,18 +39,11 @@ const WorkerDashboard = () => {
     }
 
     const fetchData = async () => {
-      // Prioritize local storage so admin edits are immediately visible globally
-      const savedProducts = localStorage.getItem('da_products');
-      if (savedProducts) {
-        setProducts(JSON.parse(savedProducts));
-        return;
-      }
-
       try {
-        const res = await axios.get('http://localhost:5000/api/products');
+        const res = await axios.get(`${API_URL}/products`);
         if(res.data && res.data.length > 0) setProducts(res.data);
-        else throw new Error("Fallback to local");
       } catch (e) {
+        console.error("API error", e);
         setProducts(PRODUCTS_DATA);
       }
     };
@@ -56,44 +56,14 @@ const WorkerDashboard = () => {
     ]);
   }, [navigate]);
 
-  const updateDeliveryStatus = (orderId, newStatus) => {
-    const allOrders = JSON.parse(localStorage.getItem('da_orders') || '[]');
-    let targetOrder = null;
-    const updated = allOrders.map(o => {
-      if (o.id === orderId) {
-        targetOrder = o;
-        return { ...o, status: newStatus };
-      }
-      return o;
-    });
-    localStorage.setItem('da_orders', JSON.stringify(updated));
-    loadDeliveries();
-
-    if (newStatus === 'DELIVERED' && targetOrder) {
-      // Deduct stock upon delivery
-      const storedProducts = localStorage.getItem('da_products');
-      let currentProducts = storedProducts ? JSON.parse(storedProducts) : PRODUCTS_DATA;
-      let lowStockAlerts = [];
-      
-      const updatedProducts = currentProducts.map(p => {
-        const orderedItem = targetOrder.items.find(i => i.id === p.id || i.product_id === p.id);
-        if (orderedItem) {
-           const newStock = Math.max(0, Number(p.stock || 0) - orderedItem.quantity);
-           if (newStock < 10) lowStockAlerts.push(`${p.name} (${newStock} units left)`);
-           return { ...p, stock: newStock };
-        }
-        return p;
-      });
-      localStorage.setItem('da_products', JSON.stringify(updatedProducts));
-      setProducts(updatedProducts);
-
-      if (lowStockAlerts.length > 0) {
-        alert(`Stock Deducted.\n\nLow Stock Alert triggered for:\n${lowStockAlerts.join('\n')}\n\nSystem has sent a re-order alert email to: dineshnallathambi2001@gmail.com`);
-      } else {
-        alert(`Order ${orderId} marked as DELIVERED. Stock updated.`);
-      }
-    } else {
+  const updateDeliveryStatus = async (orderId, newStatus) => {
+    try {
+      await axios.put(`${API_URL}/orders/${orderId}/status`, { status: newStatus });
+      loadDeliveries();
       alert(`Order ${orderId} marked as ${newStatus}`);
+    } catch (e) {
+      console.error("API update failed", e);
+      alert("Failed to update status.");
     }
   };
 
@@ -164,19 +134,16 @@ const WorkerDashboard = () => {
       }))
     };
 
-    // Save to localStorage for instant synchronization with Admin Dashboard
     try {
-      const existingOrders = JSON.parse(localStorage.getItem('da_orders') || '[]');
-      const updatedOrders = [newOrderFull, ...existingOrders];
-      localStorage.setItem('da_orders', JSON.stringify(updatedOrders));
+      await axios.post(`${API_URL}/orders`, {
+        customer_name: storeName + ` (by ${workerId})`,
+        customer_phone: "Worker Placed",
+        customer_address: "Store Address Pending",
+        total_amount: totalAmount,
+        items: cart.map(i => ({ product_id: i.id, name: i.name, quantity: i.quantity, price: i.price }))
+      });
     } catch (e) {
-      console.error('LocalStorage write error:', e);
-    }
-
-    try {
-      await axios.post('http://localhost:5000/api/orders', newOrderFull);
-    } catch (e) {
-      console.log("Order API failed, saving to local state only.");
+      console.log("Order API failed.", e);
     }
     
     setRecentOrders([{ 

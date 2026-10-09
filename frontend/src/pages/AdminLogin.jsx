@@ -19,7 +19,8 @@ const AdminLogin = () => {
         return;
       }
       
-      const res = await axios.post('http://localhost:5000/api/admin/login', { username, password });
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const res = await axios.post(`${API_URL}/admin/login`, { username, password });
       if (res.data.message === 'Login successful') {
         localStorage.setItem('adminToken', 'demo-token'); // Simple demo auth
         navigate('/admin/dashboard');

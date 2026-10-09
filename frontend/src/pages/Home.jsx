@@ -49,20 +49,14 @@ const Home = ({ addToCart, searchQuery = '', cartItems = [], setCartItems }) => 
   
   useEffect(() => {
     const fetchProducts = async () => {
-      // Prioritize local storage so admin edits are immediately visible globally
-      const savedProducts = localStorage.getItem('da_products');
-      if (savedProducts) {
-        setProducts(JSON.parse(savedProducts));
-        return;
-      }
-
       try {
-        const res = await axios.get('http://localhost:5000/api/products');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const res = await axios.get(`${apiUrl}/products`);
         if(res.data && res.data.length > 0) {
           setProducts(res.data);
         }
       } catch (err) {
-        console.log("Using mock data due to API error:", err.message);
+        console.error("API Error, falling back to mock data:", err.message);
         setProducts(PRODUCTS_DATA);
       }
     };
