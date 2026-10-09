@@ -98,7 +98,7 @@ const AdminDashboard = () => {
       if (res.data) {
         const formatted = res.data.map(order => ({
           ...order,
-          created_at: new Date(order.created_at).toLocaleString(),
+          created_at: new Date(order.createdAt || order.created_at || new Date()).toLocaleString(),
           items: order.items || []
         }));
         setOrders(formatted);
@@ -766,17 +766,26 @@ const AdminDashboard = () => {
                   </thead>
                   <tbody>
                     {(selectedOrder.items && selectedOrder.items.length > 0) ? (
-                      selectedOrder.items.map((item, idx) => (
+                      selectedOrder.items.map((item, idx) => {
+                        const fullProduct = products.find(p => String(p.id) === String(item.product_id) || String(p.id) === String(item.id)) || {};
+                        return (
                         <tr key={idx}>
                           <td>
-                            <strong>{item.name || item.product_name || `Product #${item.product_id}`}</strong>
-                            {item.variant && <span style={{fontSize: '0.8rem', color: '#666', display: 'block'}}>{item.variant}</span>}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              {fullProduct.image_url && (
+                                <img src={fullProduct.image_url} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
+                              )}
+                              <div>
+                                <strong>{item.name || fullProduct.name || `Product #${item.product_id}`}</strong>
+                                {(item.variant || fullProduct.variant) && <span style={{fontSize: '0.8rem', color: '#666', display: 'block'}}>{item.variant || fullProduct.variant}</span>}
+                              </div>
+                            </div>
                           </td>
                           <td>{item.quantity} units</td>
                           <td>₹{item.price || item.price_at_time}</td>
                           <td><strong>₹{(item.quantity || 1) * (item.price || item.price_at_time || 0)}</strong></td>
                         </tr>
-                      ))
+                      )})
                     ) : (
                       <tr>
                         <td colSpan="4" style={{textAlign: 'center', color: '#888'}}>No individual item details available.</td>
