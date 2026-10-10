@@ -411,13 +411,18 @@ export default function AuthPage() {
                   right: '12px', 
                   top: '50%', 
                   transform: 'translateY(-50%)', 
-                  background: 'none', 
+                  background: 'transparent', 
                   border: 'none', 
+                  boxShadow: 'none',
                   cursor: 'pointer', 
                   color: '#888',
                   display: 'flex',
                   alignItems: 'center',
-                  padding: 0
+                  justifyContent: 'center',
+                  padding: 0,
+                  width: '24px',
+                  height: '24px',
+                  outline: 'none'
                 }}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
