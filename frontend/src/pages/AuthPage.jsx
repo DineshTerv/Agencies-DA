@@ -136,9 +136,20 @@ export default function AuthPage() {
           }
           // Customer login
           if (form.username && form.password) {
-            token = 'demo-user-token';
-            role = 'user';
-            username = form.username;
+            const users = JSON.parse(localStorage.getItem('da_users') || '[]');
+            // Support logging in via username or email
+            const validUser = users.find(u => 
+              (u.username === form.username || u.email === form.username) && 
+              u.password === form.password
+            );
+
+            if (validUser) {
+              token = 'demo-user-token';
+              role = 'user';
+              username = validUser.username;
+            } else {
+              throw new Error('Account not found or password incorrect. Please Create an Account first if you are a new customer.');
+            }
           } else {
             throw new Error('Please enter a valid username and password.');
           }
