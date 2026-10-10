@@ -35,7 +35,15 @@ export default function AuthPage() {
   const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState('user');
-  const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '' });
+  const [form, setForm] = useState({ 
+    username: '', 
+    email: '', 
+    password: '', 
+    confirm: '',
+    name: '',
+    gender: 'male',
+    age: ''
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -75,10 +83,12 @@ export default function AuthPage() {
           username: form.username,
           email: form.email,
           password: form.password,
-          name: form.username,
+          name: form.name || form.username,
+          gender: form.gender,
+          age: form.age,
           phone: '',
           address: '',
-          avatar: 'man'
+          avatar: form.gender === 'female' ? 'girl' : 'man'
         });
         localStorage.setItem('da_users', JSON.stringify(users));
 
@@ -89,7 +99,10 @@ export default function AuthPage() {
             username: form.username,
             email: form.email,
             password: form.password,
-            role: 'user', 
+            role: 'user',
+            name: form.name,
+            gender: form.gender,
+            age: form.age
           });
         } catch (e) {
           console.log("Backend register failed, using local only.");
@@ -98,7 +111,7 @@ export default function AuthPage() {
         setSuccess('Customer account created successfully! Please sign in.');
         setMode('login');
         setSelectedRole('user');
-        setForm({ username: '', email: '', password: '', confirm: '' });
+        setForm({ username: '', email: '', password: '', confirm: '', name: '', gender: 'male', age: '' });
       } else {
         // LOGIN MODE
         // Clear all previous tokens first to avoid cross-role mixups
@@ -289,10 +302,69 @@ export default function AuthPage() {
           </div>
 
           {mode === 'register' && (
-            <div className="field-group">
-              <label htmlFor="auth-email">
-                <span className="field-icon">📧</span> Email Address
-              </label>
+            <>
+              <div className="field-group">
+                <label htmlFor="auth-name">
+                  <span className="field-icon">📛</span> Full Name
+                </label>
+                <input
+                  id="auth-name"
+                  name="name"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={form.name}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="field-group" style={{ display: 'flex', flexDirection: 'row', gap: '15px' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label htmlFor="auth-gender">
+                    <span className="field-icon">🚻</span> Gender
+                  </label>
+                  <select
+                    id="auth-gender"
+                    name="gender"
+                    value={form.gender}
+                    onChange={handleChange}
+                    style={{
+                      width: '100%',
+                      padding: '0.8rem 1rem',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1.5px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '12px',
+                      color: 'white',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="male" style={{ color: '#000' }}>Male</option>
+                    <option value="female" style={{ color: '#000' }}>Female</option>
+                    <option value="other" style={{ color: '#000' }}>Other</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label htmlFor="auth-age">
+                    <span className="field-icon">🎂</span> Age
+                  </label>
+                  <input
+                    id="auth-age"
+                    name="age"
+                    type="number"
+                    min="13"
+                    max="100"
+                    placeholder="Your age"
+                    value={form.age}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="field-group">
+                <label htmlFor="auth-email">
+                  <span className="field-icon">📧</span> Email Address
+                </label>
               <input
                 id="auth-email"
                 name="email"
@@ -304,56 +376,73 @@ export default function AuthPage() {
                 autoComplete="email"
               />
             </div>
+            </>
           )}
 
-          <div className="field-group" style={{ position: 'relative' }}>
+          <div className="field-group">
             <label htmlFor="auth-password">
               <span className="field-icon">🔑</span> Password
             </label>
-            <input
-              id="auth-password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder={
-                mode === 'register' 
-                  ? 'Min. 6 characters' 
-                  : selectedRole === 'worker' 
-                  ? 'worker123' 
-                  : selectedRole === 'admin' 
-                  ? 'admin123' 
-                  : 'Enter password'
-              }
-              value={form.password}
-              onChange={handleChange}
-              required
-              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-              style={{ paddingRight: '40px' }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              style={{ position: 'absolute', right: '12px', top: '38px', background: 'none', border: 'none', cursor: 'pointer', color: '#888' }}
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+            <div style={{ position: 'relative' }}>
+              <input
+                id="auth-password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder={
+                  mode === 'register' 
+                    ? 'Min. 6 characters' 
+                    : selectedRole === 'worker' 
+                    ? 'worker123' 
+                    : selectedRole === 'admin' 
+                    ? 'admin123' 
+                    : 'Enter password'
+                }
+                value={form.password}
+                onChange={handleChange}
+                required
+                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                style={{ width: '100%', paddingRight: '40px' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ 
+                  position: 'absolute', 
+                  right: '12px', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)', 
+                  background: 'none', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  color: '#888',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: 0
+                }}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           {mode === 'register' && (
-            <div className="field-group" style={{ position: 'relative' }}>
+            <div className="field-group">
               <label htmlFor="auth-confirm">
                 <span className="field-icon">🔒</span> Confirm Password
               </label>
-              <input
-                id="auth-confirm"
-                name="confirm"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Re-enter password"
-                value={form.confirm}
-                onChange={handleChange}
-                required
-                autoComplete="new-password"
-                style={{ paddingRight: '40px' }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="auth-confirm"
+                  name="confirm"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Re-enter password"
+                  value={form.confirm}
+                  onChange={handleChange}
+                  required
+                  autoComplete="new-password"
+                  style={{ width: '100%', paddingRight: '40px' }}
+                />
+              </div>
             </div>
           )}
 
