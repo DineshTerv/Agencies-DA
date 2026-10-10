@@ -377,13 +377,10 @@ export default function AuthPage() {
           </button>
         </form>
 
-        {/* Demo Hint Helper for Easy Testing */}
-        {mode === 'login' && (
-          <p className="demo-credentials-hint">
-            💡 Admin: admin / admin123 | Worker: W101 / worker123
-          </p>
-        )}
-
+        {/* Company Logo instead of demo hint */}
+        <div style={{ textAlign: 'center', marginTop: '1.5rem', marginBottom: '0.5rem' }}>
+          <img src="/logo.jpg" alt="Dinesh Agencies" style={{ height: '50px', borderRadius: '4px', objectFit: 'contain' }} />
+        </div>
         {/* Footer note */}
         <p className="auth-footer-note">
           {mode === 'login' ? (
