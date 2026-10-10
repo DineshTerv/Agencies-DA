@@ -30,6 +30,12 @@ function AppContent() {
   }, [location]);
 
   const addToCart = (product) => {
+    const isLoggedIn = localStorage.getItem('authToken') || localStorage.getItem('adminToken') || localStorage.getItem('workerToken');
+    if (!isLoggedIn) {
+      alert("Please login or create an account to place orders.");
+      window.location.href = '/login';
+      return;
+    }
     setCartItems(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
@@ -138,6 +144,12 @@ function AppContent() {
                 if (currentUser && currentUser.name) displayName = currentUser.name;
               }
 
+              // Format displayName to not show full email
+              if (displayName && displayName.includes('@')) {
+                displayName = displayName.split('@')[0];
+                displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+              }
+
               if (location.pathname.includes('/admin')) {
                 return (
                   <>
@@ -240,9 +252,7 @@ function AppContent() {
       <main className="main-body">
         <Routes>
           <Route path="/" element={
-            localStorage.getItem('authToken') || localStorage.getItem('adminToken') || localStorage.getItem('workerToken')
-              ? <Home addToCart={addToCart} searchQuery={searchQuery} cartItems={cartItems} setCartItems={setCartItems} />
-              : <Navigate to="/login" replace />
+            <Home addToCart={addToCart} searchQuery={searchQuery} cartItems={cartItems} setCartItems={setCartItems} />
           } />
           <Route path="/cart" element={
             localStorage.getItem('authToken') || localStorage.getItem('adminToken') || localStorage.getItem('workerToken')
