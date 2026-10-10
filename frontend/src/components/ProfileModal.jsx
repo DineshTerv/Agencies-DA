@@ -1,7 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+const AVATARS = [
+  { id: 'man', label: 'Man', emoji: '👨' },
+  { id: 'girl', label: 'Girl', emoji: '👩' },
+  { id: 'boy', label: 'Boy', emoji: '👦' },
+  { id: 'woman', label: 'Woman', emoji: '👱‍♀️' },
+  { id: 'ninja', label: 'Ninja', emoji: '🥷' },
+  { id: 'superhero', label: 'Hero', emoji: '🦸' },
+  { id: 'astronaut', label: 'Astronaut', emoji: '🧑‍🚀' }
+];
 
 export default function ProfileModal({ isOpen, onClose, username }) {
   const [profile, setProfile] = useState({ name: '', email: '', phone: '', address: '', avatar: 'man' });
+  const [avatarIndex, setAvatarIndex] = useState(0);
 
   useEffect(() => {
     if (isOpen && username) {
@@ -9,8 +21,11 @@ export default function ProfileModal({ isOpen, onClose, username }) {
       const user = users.find(u => u.username === username);
       if (user) {
         setProfile(user);
+        const idx = AVATARS.findIndex(a => a.id === user.avatar);
+        if (idx >= 0) setAvatarIndex(idx);
       } else {
         setProfile({ username, name: username, email: '', phone: '', address: '', avatar: 'man' });
+        setAvatarIndex(0);
       }
     }
   }, [isOpen, username]);
@@ -35,15 +50,40 @@ export default function ProfileModal({ isOpen, onClose, username }) {
       <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '400px', color: '#333', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
         <h2 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>My Profile Settings</h2>
         
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', marginTop: '1rem' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
-            <input type="radio" name="avatar" checked={profile.avatar === 'man'} onChange={() => setProfile({...profile, avatar: 'man'})} /> 
-            <span style={{ fontSize: '24px' }}>👨</span> Man Avatar
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
-            <input type="radio" name="avatar" checked={profile.avatar === 'girl'} onChange={() => setProfile({...profile, avatar: 'girl'})} /> 
-            <span style={{ fontSize: '24px' }}>👩</span> Girl Avatar
-          </label>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
+          <label style={{ fontSize: '14px', fontWeight: 'bold', color: '#555', marginBottom: '10px' }}>Choose Your Avatar</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <button 
+              onClick={() => {
+                const newIndex = avatarIndex === 0 ? AVATARS.length - 1 : avatarIndex - 1;
+                setAvatarIndex(newIndex);
+                setProfile({...profile, avatar: AVATARS[newIndex].id});
+              }} 
+              style={{ background: '#f1f2f6', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+            >
+              <ChevronLeft size={20} />
+            </button>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '80px', animation: 'fadeIn 0.3s' }}>
+              <span style={{ fontSize: '55px', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.15))', lineHeight: '1' }}>
+                {AVATARS[avatarIndex].emoji}
+              </span>
+              <span style={{ fontSize: '13px', color: '#666', marginTop: '8px', fontWeight: 'bold' }}>
+                {AVATARS[avatarIndex].label}
+              </span>
+            </div>
+
+            <button 
+              onClick={() => {
+                const newIndex = avatarIndex === AVATARS.length - 1 ? 0 : avatarIndex + 1;
+                setAvatarIndex(newIndex);
+                setProfile({...profile, avatar: AVATARS[newIndex].id});
+              }} 
+              style={{ background: '#f1f2f6', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
         </div>
 
         <div style={{ marginBottom: '1rem' }}>
