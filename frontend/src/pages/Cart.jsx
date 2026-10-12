@@ -71,7 +71,7 @@ const Cart = ({ cartItems, setCartItems }) => {
         customer_phone: formData.phone,
         customer_address: formData.address,
         total_amount: totalAmount,
-        items: cartItems.map(i => ({ product_id: i.id, name: i.name, quantity: i.quantity, price: i.price }))
+        items: cartItems.map(i => ({ product_id: i.id, name: i.name, variant: i.variant, quantity: i.quantity, price: i.price }))
       });
       setOrderPlacedData({
         id: res.data.orderId || newOrderId,

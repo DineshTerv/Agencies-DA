@@ -15,6 +15,7 @@ exports.placeOrder = async (req, res) => {
     const formattedItems = items.map(item => ({
       product_id: item.product_id || item.id,
       name: item.name,
+      variant: item.variant,
       quantity: item.quantity || 1,
       price: item.price || 0
     }));
