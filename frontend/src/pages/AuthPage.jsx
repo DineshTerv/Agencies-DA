@@ -150,8 +150,8 @@ export default function AuthPage() {
           // Customer login
           if (form.username && form.password) {
             const users = JSON.parse(localStorage.getItem('da_users') || '[]');
-            // Support logging in via username or email
-            const validUser = users.find(u => 
+            // Support logging in via username or email from local storage
+            let validUser = users.find(u => 
               (u.username === form.username || u.email === form.username) && 
               u.password === form.password
             );
@@ -161,7 +161,36 @@ export default function AuthPage() {
               role = 'user';
               username = validUser.username;
             } else {
-              throw new Error('Account not found or password incorrect. Please Create an Account first if you are a new customer.');
+              // Try backend login
+              try {
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+                const backendRes = await axios.post(`${API_URL}/auth/login`, {
+                  username: form.username,
+                  password: form.password
+                });
+                if (backendRes.data && backendRes.data.token) {
+                  token = backendRes.data.token;
+                  role = backendRes.data.role === 'ADMIN' ? 'admin' : (backendRes.data.role === 'WORKER' ? 'worker' : 'user');
+                  username = backendRes.data.username;
+                  
+                  // Also cache user profile locally so cart and modals have it immediately
+                  const cachedUser = {
+                    username: backendRes.data.username,
+                    name: backendRes.data.name || backendRes.data.username,
+                    email: backendRes.data.email || '',
+                    phone: backendRes.data.phone || '',
+                    address: backendRes.data.address || '',
+                    avatar: backendRes.data.avatar || 'man',
+                    password: form.password
+                  };
+                  users.push(cachedUser);
+                  localStorage.setItem('da_users', JSON.stringify(users));
+                } else {
+                  throw new Error();
+                }
+              } catch (apiErr) {
+                throw new Error('Account not found or password incorrect. Please Create an Account first if you are a new customer.');
+              }
             }
           } else {
             throw new Error('Please enter a valid username and password.');
