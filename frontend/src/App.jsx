@@ -61,7 +61,7 @@ function AppContent() {
           <div
             className="logo"
             onClick={() => setIsContactModalOpen(true)}
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', minWidth: '220px' }}
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
             title="Click to view Contact & Owners info"
           >
             <img src="/logo.jpg" alt="DA Logo" className="company-logo" />
@@ -73,12 +73,7 @@ function AppContent() {
 
           {/* Search Bar - Sabka Bazzar Style */}
           {!location.pathname.includes('/admin') && (
-            <div className="sabka-search-bar" style={{
-              flex: '1', 
-              maxWidth: '600px', 
-              margin: '0 2rem',
-              position: 'relative'
-            }}>
+            <div className="sabka-search-bar">
               <input 
                 type="text" 
                 placeholder="Search products, local names (e.g. tej patta, haldi, phone)..." 

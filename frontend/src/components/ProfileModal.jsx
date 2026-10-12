@@ -46,9 +46,9 @@ export default function ProfileModal({ isOpen, onClose, username }) {
   };
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '400px', color: '#333', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
-        <h2 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>My Profile Settings</h2>
+    <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem' }}>
+      <div style={{ background: 'white', padding: '1.75rem', borderRadius: '16px', width: '100%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', color: '#333', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+        <h2 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px', fontSize: '1.3rem' }}>My Profile Settings</h2>
         
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
           <label style={{ fontSize: '14px', fontWeight: 'bold', color: '#555', marginBottom: '10px' }}>Choose Your Avatar</label>
