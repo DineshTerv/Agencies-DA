@@ -7,8 +7,11 @@ import {
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import './Admin.css';
 import MotivationCarousel from '../components/MotivationCarousel';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { PRODUCTS_DATA } from '../data/products';
 import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const INITIAL_DEMO_ORDERS = [
   {
@@ -58,6 +61,7 @@ const INITIAL_DEMO_ORDERS = [
 ];
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [products, setProducts] = useState(PRODUCTS_DATA);
   const [orders, setOrders] = useState([]);
@@ -150,14 +154,21 @@ const AdminDashboard = () => {
     }
   };
 
+  const adminToken = localStorage.getItem('adminToken');
+
   useEffect(() => {
-    if (!localStorage.getItem('adminToken')) {
+    if (!adminToken) {
       navigate('/login');
+      return;
     }
     loadOrders();
     loadProducts();
     loadCustomers();
-  }, [navigate]);
+  }, [adminToken, navigate]);
+
+  if (!adminToken) {
+    return null;
+  }
 
   const handleLogout = () => {
     ['authToken', 'adminToken', 'workerToken', 'username', 'workerId', 'userRole'].forEach(key => localStorage.removeItem(key));
@@ -1019,4 +1030,10 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default function SafeAdminDashboard(props) {
+  return (
+    <ErrorBoundary>
+      <AdminDashboard {...props} />
+    </ErrorBoundary>
+  );
+}

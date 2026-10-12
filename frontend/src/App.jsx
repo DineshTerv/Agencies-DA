@@ -266,12 +266,17 @@ function AppContent() {
           <Route path="/login" element={<AuthPage />} />
 
           {/* Direct portal redirects */}
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+          <Route path="/worker" element={<Navigate to="/worker/dashboard" replace />} />
           <Route path="/worker/login" element={<Navigate to="/login" replace />} />
 
           {/* Portals */}
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/worker/dashboard" element={<WorkerDashboard />} />
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
 
