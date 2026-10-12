@@ -1,7 +1,7 @@
 const Order = require('../models/Order');
 
 exports.placeOrder = async (req, res) => {
-  const { customer_name, customer_phone, customer_address, total_amount, items } = req.body;
+  const { customer_name, customer_phone, customer_address, username, total_amount, items } = req.body;
   
   if (!customer_name || !customer_phone) {
     return res.status(400).json({ message: 'Customer name and phone number are required' });
@@ -23,6 +23,8 @@ exports.placeOrder = async (req, res) => {
     const newOrder = new Order({
       customer_name,
       customer_phone,
+      customer_address: customer_address || '',
+      username: username || customer_name,
       total_amount: total_amount || 0,
       items: formattedItems,
       status: 'PENDING'
@@ -49,6 +51,28 @@ exports.getAllOrders = async (req, res) => {
   } catch (error) {
     console.error('Error fetching orders:', error);
     res.status(500).json({ message: 'Server error fetching orders' });
+  }
+};
+
+exports.getUserOrders = async (req, res) => {
+  const { username } = req.params;
+  try {
+    const orders = await Order.find({
+      $or: [
+        { username: username },
+        { customer_name: { $regex: new RegExp(`^${username}$`, 'i') } }
+      ]
+    }).sort({ createdAt: -1 });
+
+    const formattedOrders = orders.map(o => {
+      const oObj = o.toObject();
+      oObj.id = oObj._id.toString();
+      return oObj;
+    });
+    res.json(formattedOrders);
+  } catch (error) {
+    console.error('Error fetching user orders:', error);
+    res.status(500).json({ message: 'Server error fetching user orders' });
   }
 };
 

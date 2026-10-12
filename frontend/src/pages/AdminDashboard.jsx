@@ -776,8 +776,8 @@ const AdminDashboard = () => {
                                 <img src={fullProduct.image_url} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
                               )}
                               <div>
-                                <strong>{item.name || fullProduct.name || `Product #${item.product_id}`}</strong>
-                                {(item.variant || fullProduct.variant) && <span style={{fontSize: '0.8rem', color: '#666', display: 'block'}}>{item.variant || fullProduct.variant}</span>}
+                                <strong>{fullProduct.name || item.name || `Product #${item.product_id}`}</strong>
+                                {(fullProduct.variant || item.variant) && <span style={{fontSize: '0.8rem', color: '#666', display: 'block'}}>{fullProduct.variant || item.variant}</span>}
                               </div>
                             </div>
                           </td>

@@ -70,23 +70,73 @@ const Cart = ({ cartItems, setCartItems }) => {
         customer_name: formData.name,
         customer_phone: formData.phone,
         customer_address: formData.address,
+        username: savedUsername || formData.name,
         total_amount: totalAmount,
-        items: cartItems.map(i => ({ product_id: i.id, name: i.name, variant: i.variant, quantity: i.quantity, price: i.price }))
+        items: cartItems.map(i => ({ 
+          product_id: i.id, 
+          name: i.name, 
+          variant: i.variant, 
+          quantity: i.quantity, 
+          price: i.price,
+          image_url: i.image_url 
+        }))
       });
-      setOrderPlacedData({
+
+      const orderData = {
         id: res.data.orderId || newOrderId,
+        _id: res.data.orderId || newOrderId,
         customer_name: formData.name,
         customer_phone: formData.phone,
         customer_address: formData.address,
+        username: savedUsername || formData.name,
         total_amount: totalAmount,
         status: 'PENDING',
         created_at: now.toLocaleString(),
-        items: cartItems
-      });
+        createdAt: now.toISOString(),
+        items: cartItems.map(i => ({
+          id: i.id,
+          product_id: i.id,
+          name: i.name,
+          variant: i.variant,
+          quantity: i.quantity,
+          price: i.price,
+          image_url: i.image_url
+        }))
+      };
+
+      // Save into local storage orders list for immediate persistence
+      try {
+        const localOrders = JSON.parse(localStorage.getItem('da_orders') || '[]');
+        localOrders.unshift(orderData);
+        localStorage.setItem('da_orders', JSON.stringify(localOrders));
+      } catch (storageErr) {
+        console.warn("Could not save to localStorage:", storageErr);
+      }
+
+      setOrderPlacedData(orderData);
       setCartItems([]);
     } catch (err) {
       console.error("API error:", err.message);
-      alert("Failed to send order to the server! Please try again.");
+      // Fallback: save locally anyway so user never loses order
+      const fallbackOrder = {
+        id: newOrderId,
+        _id: newOrderId,
+        customer_name: formData.name,
+        customer_phone: formData.phone,
+        customer_address: formData.address,
+        username: savedUsername || formData.name,
+        total_amount: totalAmount,
+        status: 'PENDING',
+        created_at: now.toLocaleString(),
+        createdAt: now.toISOString(),
+        items: cartItems
+      };
+      const localOrders = JSON.parse(localStorage.getItem('da_orders') || '[]');
+      localOrders.unshift(fallbackOrder);
+      localStorage.setItem('da_orders', JSON.stringify(localOrders));
+
+      setOrderPlacedData(fallbackOrder);
+      setCartItems([]);
     }
 
     setIsSubmitting(false);
@@ -131,9 +181,12 @@ const Cart = ({ cartItems, setCartItems }) => {
           </div>
         </div>
 
-        <div className="receipt-actions">
+        <div className="receipt-actions" style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
           <Link to="/">
             <button className="primary-btn">🛍️ Continue Shopping</button>
+          </Link>
+          <Link to="/orders">
+            <button className="primary-btn" style={{ background: '#2ed573' }}>📦 View All Orders History</button>
           </Link>
         </div>
       </div>

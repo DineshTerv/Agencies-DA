@@ -5,6 +5,7 @@ import './App.css';
 
 import Home from './pages/Home';
 import Cart from './pages/Cart';
+import Orders from './pages/Orders';
 import AuthPage from './pages/AuthPage';
 import AdminDashboard from './pages/AdminDashboard';
 import WorkerDashboard from './pages/WorkerDashboard';
@@ -26,6 +27,7 @@ function AppContent() {
     else if (path.includes('/admin')) document.title = 'DA - ADMIN PAGE';
     else if (path.includes('/worker')) document.title = 'DA - WORKER PAGE';
     else if (path === '/cart') document.title = 'DA - CART';
+    else if (path === '/orders') document.title = 'DA - MY ORDERS';
     else document.title = 'DINESH AGENCIES - FMCG Wholesale';
   }, [location]);
 
@@ -191,7 +193,7 @@ function AppContent() {
                           <Briefcase size={16} /> Worker Dashboard
                         </Link>
                       )}
-                      <Link to="/cart" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                      <Link to="/orders" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
                         <Package size={16} /> Orders
                       </Link>
                       <div className="dropdown-item" onClick={() => {
@@ -222,7 +224,7 @@ function AppContent() {
                       <Link to="/login" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
                         <User size={16} /> My Profile
                       </Link>
-                      <Link to="/login" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                      <Link to="/orders" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
                         <Package size={16} /> Orders
                       </Link>
                       <Link to="/login" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
@@ -257,6 +259,11 @@ function AppContent() {
           <Route path="/cart" element={
             localStorage.getItem('authToken') || localStorage.getItem('adminToken') || localStorage.getItem('workerToken')
               ? <Cart cartItems={cartItems} setCartItems={setCartItems} />
+              : <Navigate to="/login" replace />
+          } />
+          <Route path="/orders" element={
+            localStorage.getItem('authToken') || localStorage.getItem('adminToken') || localStorage.getItem('workerToken')
+              ? <Orders addToCart={addToCart} />
               : <Navigate to="/login" replace />
           } />
 
