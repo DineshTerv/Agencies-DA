@@ -73,38 +73,81 @@ const AdminDashboard = () => {
   const [customerSearch, setCustomerSearch] = useState('');
 
   const loadCustomers = async () => {
-    let combined = [];
+    const customerMap = new Map();
 
-    // 1. Load from localStorage
-    try {
-      const localUsers = JSON.parse(localStorage.getItem('da_users') || '[]');
-      combined = [...localUsers];
-    } catch (e) {
-      console.warn("Error reading local customers:", e);
-    }
+    const isExcluded = (u) => {
+      const uname = (u.username || '').toLowerCase();
+      const r = (u.role || '').toLowerCase();
+      return uname === 'admin' || r === 'admin' || r === 'worker' || uname.startsWith('w1') || uname.startsWith('w2');
+    };
 
-    // 2. Fetch from Backend MongoDB
+    const addOrUpdate = (c) => {
+      if (!c) return;
+      if (isExcluded(c)) return;
+      const key = (c.username || c.email || c.phone || c.id || '').toLowerCase().trim();
+      if (!key) return;
+
+      const existing = customerMap.get(key);
+      if (!existing) {
+        customerMap.set(key, { ...c });
+      } else {
+        customerMap.set(key, {
+          ...existing,
+          name: existing.name || c.name || c.username,
+          phone: existing.phone || c.phone || '',
+          address: existing.address || c.address || '',
+          gender: (existing.gender && existing.gender !== '-') ? existing.gender : (c.gender || 'male'),
+          age: existing.age || c.age || '',
+          email: existing.email || c.email || '',
+          createdAt: existing.createdAt || c.createdAt || c.created_at
+        });
+      }
+    };
+
+    // 1. Fetch from Backend MongoDB (Primary Source of Truth)
     try {
       const res = await axios.get(`${API_URL}/auth/customers`);
       if (res.data && Array.isArray(res.data)) {
-        combined = [...res.data, ...combined];
+        res.data.forEach(addOrUpdate);
       }
     } catch (err) {
       console.warn("Backend customers fetch error:", err.message);
     }
 
-    // 3. Deduplicate by username or email
-    const seen = new Set();
-    const unique = [];
-    for (const u of combined) {
-      const key = (u.username || u.email || u.id || '').toLowerCase();
-      if (key && !seen.has(key)) {
-        seen.add(key);
-        unique.push(u);
-      }
+    // 2. Extract customers from Orders
+    try {
+      orders.forEach(o => {
+        if (o.customer_name || o.username) {
+          const uname = (o.username || o.customer_name).toLowerCase().replace(/\s+/g, '_');
+          addOrUpdate({
+            id: o._id || o.id || `ord-${uname}`,
+            username: o.username || uname,
+            name: o.customer_name || o.username,
+            phone: o.customer_phone || '',
+            address: o.customer_address || '',
+            gender: 'male',
+            age: '',
+            email: '',
+            avatar: 'man',
+            createdAt: o.createdAt || o.created_at
+          });
+        }
+      });
+    } catch (ordErr) {
+      console.warn("Error reading orders for customers:", ordErr);
     }
 
-    setCustomers(unique);
+    // 3. Merge with local storage accounts
+    try {
+      const localUsers = JSON.parse(localStorage.getItem('da_users') || '[]');
+      if (Array.isArray(localUsers)) {
+        localUsers.forEach(addOrUpdate);
+      }
+    } catch (e) {
+      console.warn("Error reading local customers:", e);
+    }
+
+    setCustomers(Array.from(customerMap.values()));
   };
   const [workers, setWorkers] = useState(() => {
     const saved = localStorage.getItem('da_workers');

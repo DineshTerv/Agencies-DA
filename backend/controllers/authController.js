@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Order = require('../models/Order');
 const bcrypt = require('bcrypt');
 
 // POST /api/auth/register
@@ -108,23 +109,52 @@ exports.login = async (req, res) => {
 exports.getCustomers = async (req, res) => {
   try {
     const customers = await User.find({
-      role: { $in: ['CUSTOMER', 'user', 'customer'] }
+      role: { $nin: ['ADMIN', 'admin', 'WORKER', 'worker'] }
     }).select('-password').sort({ createdAt: -1 });
 
-    const formatted = customers.map(u => ({
-      id: u._id.toString(),
-      username: u.username,
-      name: u.name || u.username,
-      email: u.email || '',
-      phone: u.phone || '',
-      address: u.address || '',
-      avatar: u.avatar || 'man',
-      gender: u.gender || 'male',
-      age: u.age || '',
-      createdAt: u.createdAt
-    }));
+    const customerMap = new Map();
 
-    return res.json(formatted);
+    customers.forEach(u => {
+      const key = (u.username || u.email || u._id.toString()).toLowerCase();
+      customerMap.set(key, {
+        id: u._id.toString(),
+        username: u.username,
+        name: u.name || u.username,
+        email: u.email || '',
+        phone: u.phone || '',
+        address: u.address || '',
+        avatar: u.avatar || 'man',
+        gender: u.gender || 'male',
+        age: u.age || '',
+        createdAt: u.createdAt
+      });
+    });
+
+    // Also include buyers from Orders collection
+    try {
+      const orders = await Order.find({}).sort({ createdAt: -1 });
+      orders.forEach(o => {
+        const usernameKey = (o.username || o.customer_name || '').toLowerCase();
+        if (usernameKey && usernameKey !== 'admin' && !usernameKey.startsWith('w') && !customerMap.has(usernameKey)) {
+          customerMap.set(usernameKey, {
+            id: o._id ? o._id.toString() : `ord-${usernameKey}`,
+            username: o.username || usernameKey,
+            name: o.customer_name || usernameKey,
+            email: '',
+            phone: o.customer_phone || '',
+            address: o.customer_address || '',
+            avatar: 'man',
+            gender: 'male',
+            age: '',
+            createdAt: o.createdAt || new Date()
+          });
+        }
+      });
+    } catch (ordErr) {
+      console.warn('Orders extraction for customers notice:', ordErr.message);
+    }
+
+    return res.json(Array.from(customerMap.values()));
   } catch (err) {
     console.error('Error fetching customers:', err);
     return res.status(500).json({ message: 'Server error fetching customers.' });

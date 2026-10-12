@@ -42,7 +42,9 @@ export default function AuthPage() {
     confirm: '',
     name: '',
     gender: 'male',
-    age: ''
+    age: '',
+    phone: '',
+    address: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -86,8 +88,8 @@ export default function AuthPage() {
           name: form.name || form.username,
           gender: form.gender,
           age: form.age,
-          phone: '',
-          address: '',
+          phone: form.phone || '',
+          address: form.address || '',
           avatar: form.gender === 'female' ? 'girl' : 'man'
         });
         localStorage.setItem('da_users', JSON.stringify(users));
@@ -102,16 +104,18 @@ export default function AuthPage() {
             role: 'user',
             name: form.name,
             gender: form.gender,
-            age: form.age
+            age: form.age,
+            phone: form.phone || '',
+            address: form.address || ''
           });
         } catch (e) {
-          console.log("Backend register failed, using local only.");
+          console.log("Backend register notice:", e.message);
         }
 
         setSuccess('Customer account created successfully! Please sign in.');
         setMode('login');
         setSelectedRole('user');
-        setForm({ username: '', email: '', password: '', confirm: '', name: '', gender: 'male', age: '' });
+        setForm({ username: '', email: '', password: '', confirm: '', name: '', gender: 'male', age: '', phone: '', address: '' });
       } else {
         // LOGIN MODE
         // Clear all previous tokens first to avoid cross-role mixups
@@ -394,17 +398,56 @@ export default function AuthPage() {
                 <label htmlFor="auth-email">
                   <span className="field-icon">📧</span> Email Address
                 </label>
-              <input
-                id="auth-email"
-                name="email"
-                type="email"
-                placeholder="you@example.com"
-                value={form.email}
-                onChange={handleChange}
-                required
-                autoComplete="email"
-              />
-            </div>
+                <input
+                  id="auth-email"
+                  name="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                  autoComplete="email"
+                />
+              </div>
+
+              <div className="field-group">
+                <label htmlFor="auth-phone">
+                  <span className="field-icon">📞</span> Contact Phone / Mobile Number
+                </label>
+                <input
+                  id="auth-phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="e.g. 9876543210"
+                  value={form.phone}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="field-group">
+                <label htmlFor="auth-address">
+                  <span className="field-icon">📍</span> Shop / Delivery Address
+                </label>
+                <textarea
+                  id="auth-address"
+                  name="address"
+                  rows="2"
+                  placeholder="Enter store name, street, area, city..."
+                  value={form.address}
+                  onChange={handleChange}
+                  style={{
+                    width: '100%',
+                    padding: '0.8rem 1rem',
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1.5px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontFamily: 'inherit',
+                    resize: 'none'
+                  }}
+                />
+              </div>
             </>
           )}
 
