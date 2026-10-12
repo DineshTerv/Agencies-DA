@@ -1,42 +1,55 @@
-const db = require('../db');
+const User = require('../models/User');
 const bcrypt = require('bcrypt');
 
 // POST /api/auth/register
 exports.register = async (req, res) => {
-  const { username, email, password, role } = req.body;
+  const { username, email, password, role, name, gender, age, phone, address, avatar } = req.body;
 
-  // Only allow valid roles — admin must be approved by owner, so default pending
-  const allowedRoles = ['user', 'worker', 'admin'];
-  const selectedRole = allowedRoles.includes(role) ? role : 'user';
+  const allowedRoles = ['user', 'worker', 'admin', 'CUSTOMER', 'WORKER', 'ADMIN'];
+  const selectedRole = allowedRoles.includes(role) ? role : 'CUSTOMER';
 
-  if (!username || !email || !password) {
-    return res.status(400).json({ message: 'All fields are required.' });
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Username and password are required.' });
   }
 
   try {
-    // Check if username or email already taken
-    const [existing] = await db.query(
-      'SELECT id FROM users WHERE username = ? OR email = ?',
-      [username, email]
-    );
-    if (existing.length > 0) {
+    // Check if user already exists
+    const existing = await User.findOne({ 
+      $or: [
+        { username: username }, 
+        ...(email ? [{ email: email }] : [])
+      ] 
+    });
+
+    if (existing) {
       return res.status(409).json({ message: 'Username or email already exists.' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const status = (selectedRole === 'admin' || selectedRole === 'ADMIN') ? 'pending' : 'active';
+    const computedAvatar = avatar || (gender === 'female' ? 'girl' : 'man');
 
-    // Admin accounts start as pending until approved
-    const status = selectedRole === 'admin' ? 'pending' : 'active';
+    const newUser = new User({
+      username,
+      email: email || '',
+      password: hashedPassword,
+      name: name || username,
+      role: selectedRole,
+      gender: gender || 'male',
+      age: age || '',
+      phone: phone || '',
+      address: address || '',
+      avatar: computedAvatar,
+      status
+    });
 
-    await db.query(
-      'INSERT INTO users (username, email, password, role, status) VALUES (?, ?, ?, ?, ?)',
-      [username, email, hashedPassword, selectedRole, status]
-    );
+    await newUser.save();
 
     return res.status(201).json({
-      message: selectedRole === 'admin'
+      message: status === 'pending'
         ? 'Admin account created. Awaiting approval.'
-        : 'Account created successfully. You can now log in.'
+        : 'Account created successfully. You can now log in.',
+      userId: newUser._id
     });
   } catch (err) {
     console.error('Register error:', err);
@@ -53,18 +66,12 @@ exports.login = async (req, res) => {
   }
 
   try {
-    const [rows] = await db.query(
-      'SELECT * FROM users WHERE username = ?',
-      [username]
-    );
+    const user = await User.findOne({ username });
 
-    if (rows.length === 0) {
+    if (!user) {
       return res.status(401).json({ message: 'Invalid username or password.' });
     }
 
-    const user = rows[0];
-
-    // Check account status
     if (user.status === 'pending') {
       return res.status(403).json({ message: 'Your account is pending approval. Contact the admin.' });
     }
@@ -77,18 +84,49 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid username or password.' });
     }
 
-    // Return user info + role (no JWT for now, simple token demo)
-    const token = `${user.role}-token-${user.id}`;
+    const token = `${user.role}-token-${user._id}`;
 
     return res.status(200).json({
       message: 'Login successful',
       token,
       role: user.role,
       username: user.username,
-      userId: user.id
+      name: user.name,
+      userId: user._id,
+      avatar: user.avatar,
+      email: user.email,
+      phone: user.phone,
+      address: user.address
     });
   } catch (err) {
     console.error('Login error:', err);
     return res.status(500).json({ message: 'Server error during login.' });
+  }
+};
+
+// GET /api/auth/customers
+exports.getCustomers = async (req, res) => {
+  try {
+    const customers = await User.find({
+      role: { $in: ['CUSTOMER', 'user', 'customer'] }
+    }).select('-password').sort({ createdAt: -1 });
+
+    const formatted = customers.map(u => ({
+      id: u._id.toString(),
+      username: u.username,
+      name: u.name || u.username,
+      email: u.email || '',
+      phone: u.phone || '',
+      address: u.address || '',
+      avatar: u.avatar || 'man',
+      gender: u.gender || 'male',
+      age: u.age || '',
+      createdAt: u.createdAt
+    }));
+
+    return res.json(formatted);
+  } catch (err) {
+    console.error('Error fetching customers:', err);
+    return res.status(500).json({ message: 'Server error fetching customers.' });
   }
 };

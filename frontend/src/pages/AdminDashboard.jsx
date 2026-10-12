@@ -65,8 +65,43 @@ const AdminDashboard = () => {
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('ALL');
   
-  const daUsers = JSON.parse(localStorage.getItem('da_users') || '[]');
-  
+  const [customers, setCustomers] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState('');
+
+  const loadCustomers = async () => {
+    let combined = [];
+
+    // 1. Load from localStorage
+    try {
+      const localUsers = JSON.parse(localStorage.getItem('da_users') || '[]');
+      combined = [...localUsers];
+    } catch (e) {
+      console.warn("Error reading local customers:", e);
+    }
+
+    // 2. Fetch from Backend MongoDB
+    try {
+      const res = await axios.get(`${API_URL}/auth/customers`);
+      if (res.data && Array.isArray(res.data)) {
+        combined = [...res.data, ...combined];
+      }
+    } catch (err) {
+      console.warn("Backend customers fetch error:", err.message);
+    }
+
+    // 3. Deduplicate by username or email
+    const seen = new Set();
+    const unique = [];
+    for (const u of combined) {
+      const key = (u.username || u.email || u.id || '').toLowerCase();
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        unique.push(u);
+      }
+    }
+
+    setCustomers(unique);
+  };
   const [workers, setWorkers] = useState(() => {
     const saved = localStorage.getItem('da_workers');
     if (saved) return JSON.parse(saved);
@@ -81,16 +116,12 @@ const AdminDashboard = () => {
   useEffect(() => {
     localStorage.setItem('da_workers', JSON.stringify(workers));
   }, [workers]);
-  
+
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isWorkerModalOpen, setIsWorkerModalOpen] = useState(false);
   const [currentProduct, setCurrentProduct] = useState({ name: '', category_id: 1, price: '', stock: '', description: '' });
   const [currentWorker, setCurrentWorker] = useState({ name: '', phone: '', password: '' });
   const [timeFilter, setTimeFilter] = useState('Daily');
-
-  const navigate = useNavigate();
-
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   const loadOrders = async () => {
     try {
@@ -125,6 +156,7 @@ const AdminDashboard = () => {
     }
     loadOrders();
     loadProducts();
+    loadCustomers();
   }, [navigate]);
 
   const handleLogout = () => {
@@ -294,9 +326,9 @@ const AdminDashboard = () => {
 
           <button 
             className={`nav-btn ${activeTab === 'customers' ? 'active' : ''}`} 
-            onClick={() => setActiveTab('customers')}
+            onClick={() => { setActiveTab('customers'); loadCustomers(); }}
           >
-            <User size={20} /> Customers ({daUsers.length})
+            <User size={20} /> Customers ({customers.length})
           </button>
         </nav>
 
@@ -681,33 +713,105 @@ const AdminDashboard = () => {
         {activeTab === 'customers' && (
           <div className="section-container">
             <div className="section-header">
-              <h1>Registered Customers</h1>
+              <div>
+                <h1>Registered Customer Accounts</h1>
+                <p style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px'}}>
+                  Live customer accounts registered via customer portal & database
+                </p>
+              </div>
+              <button className="refresh-btn" onClick={loadCustomers} style={{background: 'var(--primary-color)', color: '#fff'}}>
+                <RefreshCw size={16} /> Sync Customers
+              </button>
             </div>
+
+            {/* Customers Toolbar */}
+            <div className="orders-toolbar glass" style={{ marginBottom: '1.5rem' }}>
+              <div className="search-box">
+                <Search size={18} color="#888" />
+                <input 
+                  type="text" 
+                  placeholder="Search by name, username, email, phone, or address..." 
+                  value={customerSearch}
+                  onChange={e => setCustomerSearch(e.target.value)}
+                />
+              </div>
+              <span style={{ fontSize: '0.9rem', color: '#666', fontWeight: 'bold' }}>
+                Total: {customers.length} registered
+              </span>
+            </div>
+
             <div className="table-container glass">
               <table className="admin-table">
                 <thead>
                   <tr>
                     <th>Avatar</th>
-                    <th>Name / Username</th>
-                    <th>Email</th>
+                    <th>Full Name / Username</th>
+                    <th>Gender & Age</th>
+                    <th>Email Address</th>
                     <th>Phone</th>
                     <th>Delivery Address</th>
+                    <th>Registered</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {daUsers.length > 0 ? daUsers.map((u, idx) => (
-                    <tr key={idx}>
-                      <td style={{fontSize: '24px'}}>{u.avatar === 'girl' ? '👩' : (u.avatar === 'man' ? '👨' : '👤')}</td>
-                      <td><strong>{u.name || u.username}</strong><br/><span style={{fontSize: '12px', color: '#666'}}>@{u.username}</span></td>
-                      <td>{u.email || '-'}</td>
-                      <td>{u.phone || '-'}</td>
-                      <td style={{whiteSpace: 'pre-wrap', maxWidth: '300px'}}>{u.address || '-'}</td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan="5" style={{textAlign: 'center', padding: '2rem', color: '#888'}}>No customers registered yet.</td>
-                    </tr>
-                  )}
+                  {(() => {
+                    const filtered = customers.filter(u => {
+                      if (!customerSearch) return true;
+                      const q = customerSearch.toLowerCase();
+                      return (
+                        (u.name && u.name.toLowerCase().includes(q)) ||
+                        (u.username && u.username.toLowerCase().includes(q)) ||
+                        (u.email && u.email.toLowerCase().includes(q)) ||
+                        (u.phone && u.phone.includes(q)) ||
+                        (u.address && u.address.toLowerCase().includes(q))
+                      );
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan="7" style={{textAlign: 'center', padding: '3rem', color: '#888'}}>
+                            <User size={40} style={{opacity: 0.3, marginBottom: '0.5rem'}} /><br/>
+                            {customers.length === 0 ? "No customers registered yet." : "No customers match your search."}
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return filtered.map((u, idx) => (
+                      <tr key={idx} style={{ verticalAlign: 'middle' }}>
+                        <td style={{fontSize: '28px', textAlign: 'center'}}>
+                          {u.avatar === 'girl' ? '👩' : (u.avatar === 'man' ? '👨' : (u.gender === 'female' ? '👩' : '👨'))}
+                        </td>
+                        <td>
+                          <strong>{u.name || u.username}</strong>
+                          <div style={{fontSize: '12px', color: '#ff9f43', fontWeight: 'bold'}}>@{u.username}</div>
+                        </td>
+                        <td>
+                          <span style={{ textTransform: 'capitalize', fontWeight: '600', color: '#2b3445' }}>
+                            {u.gender || '-'}
+                          </span>
+                          {u.age && <span style={{ fontSize: '0.85rem', color: '#777', marginLeft: '6px' }}>({u.age} yrs)</span>}
+                        </td>
+                        <td>{u.email || '-'}</td>
+                        <td>
+                          {u.phone ? (
+                            <a href={`tel:${u.phone}`} style={{ textDecoration: 'none', color: '#ff9f43', fontWeight: '600' }}>
+                              <Phone size={13} style={{marginRight: '4px'}} />{u.phone}
+                            </a>
+                          ) : '-'}
+                        </td>
+                        <td style={{whiteSpace: 'pre-wrap', maxWidth: '280px', fontSize: '0.9rem', color: '#555'}}>
+                          {u.address ? (
+                            <span><MapPin size={13} style={{color: '#ff9f43', marginRight: '4px'}} />{u.address}</span>
+                          ) : <span style={{color: '#aaa'}}>Not provided</span>}
+                        </td>
+                        <td style={{ fontSize: '0.85rem', color: '#888' }}>
+                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'Active'}
+                        </td>
+                      </tr>
+                    ));
+                  })()}
                 </tbody>
               </table>
             </div>

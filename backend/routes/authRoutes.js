@@ -8,4 +8,7 @@ router.post('/register', authController.register);
 // Login — returns role + token, frontend redirects based on role
 router.post('/login', authController.login);
 
+// Get registered customers for admin
+router.get('/customers', authController.getCustomers);
+
 module.exports = router;
