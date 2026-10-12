@@ -7,10 +7,26 @@ import './Cart.css';
 
 const Cart = ({ cartItems, setCartItems }) => {
   const savedUsername = localStorage.getItem('username') || '';
-  const [formData, setFormData] = useState({ 
-    name: savedUsername !== 'admin' && !savedUsername.startsWith('W') ? savedUsername : '', 
-    phone: '', 
-    address: '' 
+  const [formData, setFormData] = useState(() => {
+    let email = '';
+    let phone = '';
+    let address = '';
+    try {
+      const users = JSON.parse(localStorage.getItem('da_users') || '[]');
+      const current = users.find(u => u.username === savedUsername);
+      if (current) {
+        email = current.email || '';
+        phone = current.phone || '';
+        address = current.address || '';
+      }
+    } catch (e) {}
+
+    return {
+      name: savedUsername !== 'admin' && !savedUsername.startsWith('W') ? savedUsername : '',
+      email,
+      phone,
+      address
+    };
   });
   const [orderPlacedData, setOrderPlacedData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,6 +84,7 @@ const Cart = ({ cartItems, setCartItems }) => {
     try {
       const res = await axios.post(`${API_URL}/orders`, {
         customer_name: formData.name,
+        customer_email: formData.email || '',
         customer_phone: formData.phone,
         customer_address: formData.address,
         username: savedUsername || formData.name,
@@ -86,6 +103,7 @@ const Cart = ({ cartItems, setCartItems }) => {
         id: res.data.orderId || newOrderId,
         _id: res.data.orderId || newOrderId,
         customer_name: formData.name,
+        customer_email: formData.email || '',
         customer_phone: formData.phone,
         customer_address: formData.address,
         username: savedUsername || formData.name,
@@ -259,6 +277,15 @@ const Cart = ({ cartItems, setCartItems }) => {
               value={formData.phone} 
               onChange={e => setFormData({...formData, phone: e.target.value})} 
               placeholder="e.g. 9876543210" 
+            />
+          </div>
+          <div className="form-group">
+            <label>Email Address</label>
+            <input 
+              type="email" 
+              value={formData.email} 
+              onChange={e => setFormData({...formData, email: e.target.value})} 
+              placeholder="you@example.com (optional)" 
             />
           </div>
           <div className="form-group">

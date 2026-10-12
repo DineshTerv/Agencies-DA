@@ -10,6 +10,7 @@ const orderItemSchema = new mongoose.Schema({
 
 const orderSchema = new mongoose.Schema({
   customer_name: { type: String },
+  customer_email: { type: String, default: '' },
   customer_phone: { type: String },
   customer_address: { type: String },
   username: { type: String },

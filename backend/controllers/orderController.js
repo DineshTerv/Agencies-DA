@@ -1,7 +1,7 @@
 const Order = require('../models/Order');
 
 exports.placeOrder = async (req, res) => {
-  const { customer_name, customer_phone, customer_address, username, total_amount, items } = req.body;
+  const { customer_name, customer_email, customer_phone, customer_address, username, total_amount, items } = req.body;
   
   if (!customer_name || !customer_phone) {
     return res.status(400).json({ message: 'Customer name and phone number are required' });
@@ -22,6 +22,7 @@ exports.placeOrder = async (req, res) => {
 
     const newOrder = new Order({
       customer_name,
+      customer_email: customer_email || '',
       customer_phone,
       customer_address: customer_address || '',
       username: username || customer_name,

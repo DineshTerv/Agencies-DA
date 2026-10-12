@@ -84,21 +84,24 @@ const AdminDashboard = () => {
     const addOrUpdate = (c) => {
       if (!c) return;
       if (isExcluded(c)) return;
+      const detectedEmail = c.email || 
+        (c.username && c.username.includes('@') ? c.username : '') || 
+        (c.name && c.name.includes('@') ? c.name : '');
       const key = (c.username || c.email || c.phone || c.id || '').toLowerCase().trim();
       if (!key) return;
 
       const existing = customerMap.get(key);
       if (!existing) {
-        customerMap.set(key, { ...c });
+        customerMap.set(key, { ...c, email: detectedEmail || c.email || '' });
       } else {
         customerMap.set(key, {
           ...existing,
-          name: existing.name || c.name || c.username,
+          name: (existing.name && !existing.name.includes('@')) ? existing.name : (c.name || c.username),
           phone: existing.phone || c.phone || '',
           address: existing.address || c.address || '',
           gender: (existing.gender && existing.gender !== '-') ? existing.gender : (c.gender || 'male'),
           age: existing.age || c.age || '',
-          email: existing.email || c.email || '',
+          email: existing.email || detectedEmail || '',
           createdAt: existing.createdAt || c.createdAt || c.created_at
         });
       }
@@ -119,15 +122,22 @@ const AdminDashboard = () => {
       orders.forEach(o => {
         if (o.customer_name || o.username) {
           const uname = (o.username || o.customer_name).toLowerCase().replace(/\s+/g, '_');
+          const emailFromOrder = (o.customer_name && o.customer_name.includes('@')) 
+            ? o.customer_name 
+            : ((o.username && o.username.includes('@')) ? o.username : (o.customer_email || ''));
+          const displayName = (emailFromOrder && o.customer_name === emailFromOrder) 
+            ? emailFromOrder.split('@')[0] 
+            : (o.customer_name || uname);
+
           addOrUpdate({
             id: o._id || o.id || `ord-${uname}`,
             username: o.username || uname,
-            name: o.customer_name || o.username,
+            name: displayName,
             phone: o.customer_phone || '',
             address: o.customer_address || '',
             gender: 'male',
             age: '',
-            email: '',
+            email: emailFromOrder,
             avatar: 'man',
             createdAt: o.createdAt || o.created_at
           });
@@ -847,7 +857,18 @@ const AdminDashboard = () => {
                           </span>
                           {u.age && <span style={{ fontSize: '0.85rem', color: '#777', marginLeft: '6px' }}>({u.age} yrs)</span>}
                         </td>
-                        <td>{u.email || '-'}</td>
+                        <td>
+                          {(() => {
+                            const emailVal = u.email || (u.username && u.username.includes('@') ? u.username : (u.name && u.name.includes('@') ? u.name : ''));
+                            return emailVal ? (
+                              <a href={`mailto:${emailVal}`} style={{ color: '#0984e3', textDecoration: 'none', fontWeight: '500' }}>
+                                {emailVal}
+                              </a>
+                            ) : (
+                              <span style={{ color: '#aaa', fontStyle: 'italic' }}>Not provided</span>
+                            );
+                          })()}
+                        </td>
                         <td>
                           {u.phone ? (
                             <a href={`tel:${u.phone}`} style={{ textDecoration: 'none', color: '#ff9f43', fontWeight: '600' }}>

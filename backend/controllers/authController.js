@@ -135,12 +135,19 @@ exports.getCustomers = async (req, res) => {
       const orders = await Order.find({}).sort({ createdAt: -1 });
       orders.forEach(o => {
         const usernameKey = (o.username || o.customer_name || '').toLowerCase();
+        const detectedEmail = (o.customer_name && o.customer_name.includes('@')) 
+          ? o.customer_name 
+          : ((o.username && o.username.includes('@')) ? o.username : '');
+        const displayName = (detectedEmail && o.customer_name === detectedEmail) 
+          ? detectedEmail.split('@')[0] 
+          : (o.customer_name || usernameKey);
+
         if (usernameKey && usernameKey !== 'admin' && !usernameKey.startsWith('w') && !customerMap.has(usernameKey)) {
           customerMap.set(usernameKey, {
             id: o._id ? o._id.toString() : `ord-${usernameKey}`,
             username: o.username || usernameKey,
-            name: o.customer_name || usernameKey,
-            email: '',
+            name: displayName,
+            email: detectedEmail,
             phone: o.customer_phone || '',
             address: o.customer_address || '',
             avatar: 'man',
