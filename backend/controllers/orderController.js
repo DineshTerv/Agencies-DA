@@ -222,7 +222,7 @@ exports.sendInvoiceEmail = async (req, res) => {
         details: emailResult 
       });
     } else {
-      res.status(500).json({ 
+      res.status(200).json({ 
         success: false, 
         message: `Could not send email: ${emailResult.error || emailResult.reason}`,
         details: emailResult 
@@ -230,7 +230,7 @@ exports.sendInvoiceEmail = async (req, res) => {
     }
   } catch (error) {
     console.error('Error in sendInvoiceEmail:', error);
-    res.status(500).json({ message: 'Server error sending invoice email' });
+    res.status(200).json({ success: false, message: 'Server error sending invoice email: ' + error.message });
   }
 };
 
