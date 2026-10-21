@@ -1,8 +1,10 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
 
-mongoose.connect('mongodb+srv://dinesh:Dinesh12345@cluster0.uxykwai.mongodb.net/dinesh_agencies?appName=Cluster0')
+const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/dinesh_agencies';
+mongoose.connect(mongoUri)
   .then(async () => {
     try {
       // Instead of parsing the js, we can just grab the array directly since we know the structure, but simpler: let's just copy the array
