@@ -30,9 +30,9 @@ const getTransporter = async () => {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
       },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 20000
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 8000
     });
   }
 
@@ -196,12 +196,18 @@ const sendOrderEmail = async (order, targetEmail = null) => {
 
     const sender = process.env.EMAIL_FROM || (process.env.EMAIL_USER ? `"Dinesh Agencies" <${process.env.EMAIL_USER}>` : 'Dinesh Agencies <orders@dinesh-agencies.com>');
 
-    const info = await transporter.sendMail({
+    const sendPromise = transporter.sendMail({
       from: sender,
       to: recipient,
       subject,
       html: htmlContent
     });
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Email dispatch timed out')), 8000)
+    );
+
+    const info = await Promise.race([sendPromise, timeoutPromise]);
 
     console.log(`[Email Dispatched] To: ${recipient} | MessageId: ${info.messageId}`);
     

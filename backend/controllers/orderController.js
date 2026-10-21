@@ -70,22 +70,24 @@ exports.placeOrder = async (req, res) => {
       console.warn('Error preparing WhatsApp message on placeOrder:', waErr.message);
     }
 
-    // Automatically send order invoice bill to customer email
-    let emailResult = null;
+    // Asynchronously dispatch invoice email in background so order reflects instantly
     if (savedOrder.customer_email && savedOrder.customer_email.includes('@')) {
-      try {
-        emailResult = await sendOrderEmail(savedOrder);
-      } catch (emErr) {
-        console.warn('Error sending invoice email on placeOrder:', emErr.message);
-      }
+      sendOrderEmail(savedOrder).then(res => {
+        if (res.success) {
+          console.log(`[Order Placed Email Sent] #${savedOrder._id} to ${savedOrder.customer_email}`);
+        } else {
+          console.warn(`[Order Placed Email Notice]: ${res.error || res.reason}`);
+        }
+      }).catch(err => {
+        console.warn('[Order Placed Email Error]:', err.message);
+      });
     }
     
     res.status(201).json({ 
       message: 'Order placed successfully', 
       orderId: savedOrder._id,
       order: savedOrder,
-      whatsapp: whatsappResult,
-      email: emailResult
+      whatsapp: whatsappResult
     });
   } catch (error) {
     console.error('Order placement error:', error);
@@ -158,11 +160,15 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     if (targetEmail && targetEmail.includes('@')) {
-      try {
-        emailResult = await sendOrderEmail(updatedOrder, targetEmail);
-      } catch (emErr) {
-        console.warn('Error sending automated status update email:', emErr.message);
-      }
+      sendOrderEmail(updatedOrder, targetEmail).then(res => {
+        if (res.success) {
+          console.log(`[Status Email Sent] #${updatedOrder._id} [${status}] to ${targetEmail}`);
+        } else {
+          console.warn(`[Status Email Notice]: ${res.error || res.reason}`);
+        }
+      }).catch(emErr => {
+        console.warn('[Status Email Error]:', emErr.message);
+      });
     }
 
     // Try sending automated WhatsApp if API is configured, or return prepared WhatsApp payload
@@ -171,7 +177,6 @@ exports.updateOrderStatus = async (req, res) => {
     res.json({ 
       message: 'Order status updated successfully',
       order: updatedOrder,
-      email: emailResult,
       whatsapp: whatsappResult
     });
   } catch (error) {
