@@ -1,7 +1,23 @@
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const { sendOrPrepareWhatsAppMessage } = require('../utils/whatsapp');
 const { sendOrderEmail, generateInvoiceHtml } = require('../utils/email');
+
+const findOrderByIdOrCustom = async (id) => {
+  if (!id) return null;
+  try {
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      const byMongoId = await Order.findById(id);
+      if (byMongoId) return byMongoId;
+    }
+  } catch (e) {}
+  try {
+    const byCustomId = await Order.findOne({ id: id });
+    if (byCustomId) return byCustomId;
+  } catch (e) {}
+  return null;
+};
 
 exports.placeOrder = async (req, res) => {
   const { customer_name, customer_email, customer_phone, customer_address, username, total_amount, items } = req.body;
@@ -118,10 +134,12 @@ exports.updateOrderStatus = async (req, res) => {
   const { id } = req.params;
   const { status, worker_name } = req.body;
   try {
-    const updatedOrder = await Order.findByIdAndUpdate(id, { status }, { new: true });
+    let updatedOrder = await findOrderByIdOrCustom(id);
     if (!updatedOrder) {
       return res.status(404).json({ message: 'Order not found' });
     }
+    updatedOrder.status = status;
+    await updatedOrder.save();
 
     // Automatically dispatch updated bill & status notification to customer's email
     let emailResult = null;
@@ -206,7 +224,7 @@ exports.sendInvoiceEmail = async (req, res) => {
   const { id } = req.params;
   const { email } = req.body;
   try {
-    const order = await Order.findById(id);
+    const order = await findOrderByIdOrCustom(id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
     
     const targetEmail = (email || order.customer_email || '').trim();
@@ -237,7 +255,7 @@ exports.sendInvoiceEmail = async (req, res) => {
 exports.downloadInvoiceHtml = async (req, res) => {
   const { id } = req.params;
   try {
-    const order = await Order.findById(id);
+    const order = await findOrderByIdOrCustom(id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
     const html = generateInvoiceHtml(order);
     const rawId = (order._id || id).toString();
