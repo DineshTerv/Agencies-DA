@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Package, ShoppingBag, LogOut, Plus, Edit2, Trash2, X, Users, User,
-  Eye, Phone, MapPin, Calendar, Clock, CheckCircle, AlertCircle, Search, RefreshCw 
+  Eye, Phone, MapPin, Calendar, Clock, CheckCircle, AlertCircle, Search, RefreshCw,
+  MessageCircle, Send, Download, Mail
 } from 'lucide-react';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import './Admin.css';
 import MotivationCarousel from '../components/MotivationCarousel';
 import ErrorBoundary from '../components/ErrorBoundary';
+import WhatsAppPromptModal from '../components/WhatsAppPromptModal';
+import { generateStatusMessage, openWhatsApp } from '../utils/whatsapp';
+import { downloadInvoiceFile, sendInvoiceEmail } from '../utils/invoice';
 import { PRODUCTS_DATA } from '../data/products';
 import axios from 'axios';
 
@@ -69,6 +73,31 @@ const AdminDashboard = () => {
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('ALL');
   
+  // WhatsApp Notification States
+  const [autoWhatsApp, setAutoWhatsApp] = useState(() => {
+    const saved = localStorage.getItem('da_auto_whatsapp');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [waModalData, setWaModalData] = useState({
+    isOpen: false,
+    order: null,
+    newStatus: '',
+    message: ''
+  });
+  const [waToast, setWaToast] = useState({ show: false, text: '' });
+
+  const showWaToast = (text) => {
+    setWaToast({ show: true, text });
+    setTimeout(() => {
+      setWaToast({ show: false, text: '' });
+    }, 4500);
+  };
+
+  const handleToggleAutoWhatsApp = (val) => {
+    setAutoWhatsApp(val);
+    localStorage.setItem('da_auto_whatsapp', val ? 'true' : 'false');
+  };
+
   const [customers, setCustomers] = useState([]);
   const [customerSearch, setCustomerSearch] = useState('');
 
@@ -180,12 +209,35 @@ const AdminDashboard = () => {
   const [currentWorker, setCurrentWorker] = useState({ name: '', phone: '', password: '' });
   const [timeFilter, setTimeFilter] = useState('Daily');
 
+  const [isSyncing, setIsSyncing] = useState(false);
+
   const loadOrders = async () => {
+    setIsSyncing(true);
     try {
-      const res = await axios.get(`${API_URL}/orders`);
-      if (res.data) {
-        const formatted = res.data.map(order => ({
+      let ordersData = null;
+      try {
+        const res = await axios.get(`${API_URL}/orders`, { timeout: 15000 });
+        if (res.data && Array.isArray(res.data)) {
+          ordersData = res.data;
+        }
+      } catch (remoteErr) {
+        console.warn("Primary API orders fetch warning:", remoteErr.message);
+        if (API_URL.includes('onrender')) {
+          try {
+            const localRes = await axios.get('http://localhost:5000/api/orders', { timeout: 3000 });
+            if (localRes.data && Array.isArray(localRes.data)) {
+              ordersData = localRes.data;
+            }
+          } catch (le) {
+            // Local fallback error ignored
+          }
+        }
+      }
+
+      if (ordersData) {
+        const formatted = ordersData.map(order => ({
           ...order,
+          id: order.id || (order._id ? order._id.toString() : ''),
           created_at: new Date(order.createdAt || order.created_at || new Date()).toLocaleString(),
           items: order.items || []
         }));
@@ -193,14 +245,33 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       console.error("Error fetching orders:", err.message);
-      setOrders(INITIAL_DEMO_ORDERS);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
   const loadProducts = async () => {
     try {
-      const res = await axios.get(`${API_URL}/products`);
-      if (res.data) setProducts(res.data);
+      let prodData = null;
+      try {
+        const res = await axios.get(`${API_URL}/products`, { timeout: 15000 });
+        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+          prodData = res.data;
+        }
+      } catch (remoteErr) {
+        if (API_URL.includes('onrender')) {
+          try {
+            const localRes = await axios.get('http://localhost:5000/api/products', { timeout: 3000 });
+            if (localRes.data && Array.isArray(localRes.data) && localRes.data.length > 0) {
+              prodData = localRes.data;
+            }
+          } catch (le) {}
+        }
+      }
+
+      if (prodData) {
+        setProducts(prodData);
+      }
     } catch (err) {
       console.error("Error fetching products:", err.message);
       setProducts(PRODUCTS_DATA);
@@ -228,21 +299,93 @@ const AdminDashboard = () => {
     navigate('/login');
   };
 
-  const handleStatusChange = async (orderId, newStatus) => {
-    const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
-    setOrders(updated);
-    if (selectedOrder && selectedOrder.id === orderId) {
-      setSelectedOrder({ ...selectedOrder, status: newStatus });
+  const handleOpenWhatsAppModal = (order, customStatus = null) => {
+    if (!order) return;
+    const statusToUse = customStatus || order.status || 'PENDING';
+    const workerObj = workers.find(w => w.id === order.worker_assigned);
+    const workerName = workerObj ? workerObj.name : (order.worker_assigned || '');
+    const msg = generateStatusMessage({ ...order, status: statusToUse }, statusToUse, workerName);
+    setWaModalData({
+      isOpen: true,
+      order: { ...order, status: statusToUse },
+      newStatus: statusToUse,
+      message: msg
+    });
+  };
+
+  const handleAdminSendEmail = async (order, customEmail = null) => {
+    if (!order) return;
+    const targetEmail = (customEmail || order.customer_email || prompt(`Send bill to customer email for Order #${order.id}:`, order.customer_email || ''))?.trim();
+    if (!targetEmail) return;
+
+    if (!targetEmail.includes('@') || !targetEmail.includes('.')) {
+      alert('Please provide a valid email address.');
+      return;
     }
 
     try {
-      await axios.put(`${API_URL}/orders/${orderId}/status`, { status: newStatus });
+      const res = await sendInvoiceEmail(order.id || order._id, targetEmail, API_URL);
+      if (res.success) {
+        alert(`✓ Invoice bill successfully dispatched to ${targetEmail}!`);
+      } else {
+        alert(`⚠️ Failed to send invoice: ${res.error || 'Server error'}`);
+      }
+    } catch (e) {
+      alert(`⚠️ Error: ${e.message}`);
+    }
+  };
+
+  const handleStatusChange = async (orderId, newStatus) => {
+    const targetOrder = orders.find(o => (o.id === orderId || o._id === orderId));
+    const updated = orders.map(o => (o.id === orderId || o._id === orderId) ? { ...o, status: newStatus } : o);
+    setOrders(updated);
+    if (selectedOrder && (selectedOrder.id === orderId || selectedOrder._id === orderId)) {
+      setSelectedOrder({ ...selectedOrder, status: newStatus });
+    }
+
+    const workerObj = targetOrder ? workers.find(w => w.id === targetOrder.worker_assigned) : null;
+    const workerName = workerObj ? workerObj.name : (targetOrder?.worker_assigned || '');
+
+    try {
+      await axios.put(`${API_URL}/orders/${orderId}/status`, { 
+        status: newStatus,
+        worker_name: workerName
+      });
       // Reload products if delivered, because stock might have been deducted by backend
       if (newStatus === 'DELIVERED') {
          loadProducts();
       }
     } catch (e) {
       console.error('API update failed', e);
+    }
+
+    // Trigger WhatsApp notification for customer
+    if (targetOrder) {
+      const orderWithNewStatus = { ...targetOrder, status: newStatus };
+      const msg = generateStatusMessage(orderWithNewStatus, newStatus, workerName);
+
+      if (autoWhatsApp) {
+        const waRes = openWhatsApp(targetOrder.customer_phone, msg);
+        if (waRes.blocked) {
+          // Fallback to modal if popup was blocked by browser
+          setWaModalData({
+            isOpen: true,
+            order: orderWithNewStatus,
+            newStatus,
+            message: msg
+          });
+          showWaToast(`Popup blocked. Please click 'Send via WhatsApp' to notify ${targetOrder.customer_name || 'Customer'}.`);
+        } else {
+          showWaToast(`Status updated to ${newStatus} & WhatsApp opened for ${targetOrder.customer_name || 'Customer'}!`);
+        }
+      } else {
+        setWaModalData({
+          isOpen: true,
+          order: orderWithNewStatus,
+          newStatus,
+          message: msg
+        });
+      }
     }
   };
 
@@ -509,8 +652,13 @@ const AdminDashboard = () => {
                   All incoming orders from Customers and Stores with complete delivery information
                 </p>
               </div>
-              <button className="refresh-btn" onClick={loadOrders} style={{background: 'var(--primary-color)', color: '#fff'}}>
-                <RefreshCw size={16} /> Sync Orders
+              <button 
+                className="refresh-btn" 
+                onClick={loadOrders} 
+                disabled={isSyncing}
+                style={{background: 'var(--primary-color)', color: '#fff', cursor: isSyncing ? 'wait' : 'pointer'}}
+              >
+                <RefreshCw size={16} className={isSyncing ? 'spin-icon' : ''} /> {isSyncing ? 'Syncing...' : 'Sync Orders'}
               </button>
             </div>
 
@@ -541,6 +689,18 @@ const AdminDashboard = () => {
                   <option value="DELIVERED">DELIVERED</option>
                   <option value="CANCELLED">CANCELLED</option>
                 </select>
+              </div>
+
+              <div className="wa-auto-switch-container">
+                <button 
+                  type="button" 
+                  className={`wa-toggle-pill ${autoWhatsApp ? 'active' : ''}`}
+                  onClick={() => handleToggleAutoWhatsApp(!autoWhatsApp)}
+                  title="When active, changing status opens WhatsApp automatically in a new tab"
+                >
+                  <MessageCircle size={15} />
+                  <span>Auto WhatsApp: <strong>{autoWhatsApp ? 'ON' : 'OFF'}</strong></span>
+                </button>
               </div>
             </div>
 
@@ -630,6 +790,27 @@ const AdminDashboard = () => {
                         </td>
                         <td>
                           <div className="action-buttons">
+                            <button 
+                              className="icon-btn download" 
+                              title="Download Offline HTML Invoice Bill"
+                              onClick={() => downloadInvoiceFile(order)}
+                            >
+                              <Download size={14} /> Bill
+                            </button>
+                            <button 
+                              className="icon-btn email" 
+                              title={`Send Bill directly to ${order.customer_email || 'Customer Email'}`}
+                              onClick={() => handleAdminSendEmail(order)}
+                            >
+                              <Mail size={14} /> Email
+                            </button>
+                            <button 
+                              className="icon-btn whatsapp" 
+                              title={`Notify ${order.customer_name || 'Customer'} on WhatsApp`}
+                              onClick={() => handleOpenWhatsAppModal(order)}
+                            >
+                              <MessageCircle size={15} /> WhatsApp
+                            </button>
                             <button 
                               className="icon-btn" 
                               title="View Customer & Items Detail"
@@ -920,6 +1101,14 @@ const AdminDashboard = () => {
                   </a>
                 </p>
                 <p><strong>Order Timestamp:</strong> {selectedOrder.created_at || 'Recent'}</p>
+                {selectedOrder.customer_email && (
+                  <p>
+                    <strong>Email ID:</strong> 
+                    <a href={`mailto:${selectedOrder.customer_email}`} style={{marginLeft: '6px', color: '#7c3aed', fontWeight: 600}}>
+                      <Mail size={14} style={{verticalAlign: 'middle', marginRight: '4px'}} /> {selectedOrder.customer_email}
+                    </a>
+                  </p>
+                )}
                 <p><strong>Payment Mode:</strong> Cash on Delivery (COD)</p>
               </div>
 
@@ -1005,6 +1194,42 @@ const AdminDashboard = () => {
                   </select>
                 </div>
 
+                <div className="status-update-control">
+                  <label>WhatsApp:</label>
+                  <button 
+                    type="button" 
+                    className="wa-modal-trigger-btn"
+                    onClick={() => handleOpenWhatsAppModal(selectedOrder)}
+                    title="Send WhatsApp update to customer"
+                  >
+                    <MessageCircle size={15} /> Send WhatsApp Update
+                  </button>
+                </div>
+
+                <div className="status-update-control">
+                  <label>Customer Bill / Receipt:</label>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button 
+                      type="button" 
+                      className="icon-btn download"
+                      style={{ padding: '8px 14px', borderRadius: '8px', background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
+                      onClick={() => downloadInvoiceFile(selectedOrder)}
+                      title="Download offline HTML/PDF Bill"
+                    >
+                      <Download size={15} /> Download Bill
+                    </button>
+                    <button 
+                      type="button" 
+                      className="icon-btn email"
+                      style={{ padding: '8px 14px', borderRadius: '8px', background: '#7c3aed', color: '#fff', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
+                      onClick={() => handleAdminSendEmail(selectedOrder)}
+                      title={`Send invoice to ${selectedOrder.customer_email || 'customer email'}`}
+                    >
+                      <Mail size={15} /> Send to Email
+                    </button>
+                  </div>
+                </div>
+
                 <div className="order-grand-total">
                   <span>Grand Total:</span>
                   <h3>₹{selectedOrder.total_amount}</h3>
@@ -1088,6 +1313,25 @@ const AdminDashboard = () => {
               <button type="submit" className="save-btn">Generate Worker ID</button>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* WhatsApp Notification Prompt Modal */}
+      <WhatsAppPromptModal
+        isOpen={waModalData.isOpen}
+        onClose={() => setWaModalData({ ...waModalData, isOpen: false })}
+        order={waModalData.order}
+        newStatus={waModalData.newStatus}
+        initialMessage={waModalData.message}
+        autoOpenEnabled={autoWhatsApp}
+        onToggleAutoOpen={handleToggleAutoWhatsApp}
+      />
+
+      {/* WhatsApp Toast Banner */}
+      {waToast.show && (
+        <div className="wa-toast-banner">
+          <MessageCircle size={20} color="#25D366" />
+          <span>{waToast.text}</span>
         </div>
       )}
     </div>

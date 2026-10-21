@@ -1,4 +1,7 @@
 const Order = require('../models/Order');
+const User = require('../models/User');
+const { sendOrPrepareWhatsAppMessage } = require('../utils/whatsapp');
+const { sendOrderEmail, generateInvoiceHtml } = require('../utils/email');
 
 exports.placeOrder = async (req, res) => {
   const { customer_name, customer_email, customer_phone, customer_address, username, total_amount, items } = req.body;
@@ -20,9 +23,19 @@ exports.placeOrder = async (req, res) => {
       price: item.price || 0
     }));
 
+    let finalEmail = (customer_email || '').trim();
+    if (!finalEmail && username) {
+      try {
+        const u = await User.findOne({ username });
+        if (u && u.email) finalEmail = u.email;
+      } catch (uErr) {
+        // continue
+      }
+    }
+
     const newOrder = new Order({
       customer_name,
-      customer_email: customer_email || '',
+      customer_email: finalEmail,
       customer_phone,
       customer_address: customer_address || '',
       username: username || customer_name,
@@ -32,8 +45,32 @@ exports.placeOrder = async (req, res) => {
     });
 
     const savedOrder = await newOrder.save();
+
+    // Prepare or dispatch automated WhatsApp notification for the customer
+    let whatsappResult = null;
+    try {
+      whatsappResult = await sendOrPrepareWhatsAppMessage(savedOrder, 'PENDING');
+    } catch (waErr) {
+      console.warn('Error preparing WhatsApp message on placeOrder:', waErr.message);
+    }
+
+    // Automatically send order invoice bill to customer email
+    let emailResult = null;
+    if (savedOrder.customer_email && savedOrder.customer_email.includes('@')) {
+      try {
+        emailResult = await sendOrderEmail(savedOrder);
+      } catch (emErr) {
+        console.warn('Error sending invoice email on placeOrder:', emErr.message);
+      }
+    }
     
-    res.status(201).json({ message: 'Order placed successfully', orderId: savedOrder._id });
+    res.status(201).json({ 
+      message: 'Order placed successfully', 
+      orderId: savedOrder._id,
+      order: savedOrder,
+      whatsapp: whatsappResult,
+      email: emailResult
+    });
   } catch (error) {
     console.error('Order placement error:', error);
     res.status(500).json({ message: 'Server error placing order' });
@@ -79,15 +116,68 @@ exports.getUserOrders = async (req, res) => {
 
 exports.updateOrderStatus = async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, worker_name } = req.body;
   try {
-    await Order.findByIdAndUpdate(id, { status });
-    res.json({ message: 'Order status updated successfully' });
+    const updatedOrder = await Order.findByIdAndUpdate(id, { status }, { new: true });
+    if (!updatedOrder) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Automatically dispatch updated bill & status notification to customer's email
+    let emailResult = null;
+    let targetEmail = (updatedOrder.customer_email || '').trim();
+    if (!targetEmail && updatedOrder.username) {
+      try {
+        const u = await User.findOne({ username: updatedOrder.username });
+        if (u && u.email) {
+          targetEmail = u.email;
+          updatedOrder.customer_email = targetEmail;
+          await updatedOrder.save();
+        }
+      } catch (uErr) {
+        // continue
+      }
+    }
+
+    if (targetEmail && targetEmail.includes('@')) {
+      try {
+        emailResult = await sendOrderEmail(updatedOrder, targetEmail);
+      } catch (emErr) {
+        console.warn('Error sending automated status update email:', emErr.message);
+      }
+    }
+
+    // Try sending automated WhatsApp if API is configured, or return prepared WhatsApp payload
+    const whatsappResult = await sendOrPrepareWhatsAppMessage(updatedOrder, status, worker_name);
+
+    res.json({ 
+      message: 'Order status updated successfully',
+      order: updatedOrder,
+      email: emailResult,
+      whatsapp: whatsappResult
+    });
   } catch (error) {
     console.error('Error updating status:', error);
     res.status(500).json({ message: 'Server error updating order status' });
   }
 };
+
+exports.notifyOrderWhatsApp = async (req, res) => {
+  const { id } = req.params;
+  const { status, worker_name } = req.body;
+  try {
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    const whatsappResult = await sendOrPrepareWhatsAppMessage(order, status || order.status, worker_name);
+    res.json({ success: true, whatsapp: whatsappResult });
+  } catch (error) {
+    console.error('Error in notifyOrderWhatsApp:', error);
+    res.status(500).json({ message: 'Server error sending WhatsApp notification' });
+  }
+};
+
 
 exports.assignWorker = async (req, res) => {
   const { id } = req.params;
@@ -109,5 +199,54 @@ exports.deleteOrder = async (req, res) => {
   } catch (error) {
     console.error('Error deleting order:', error);
     res.status(500).json({ message: 'Server error deleting order' });
+  }
+};
+
+exports.sendInvoiceEmail = async (req, res) => {
+  const { id } = req.params;
+  const { email } = req.body;
+  try {
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    
+    const targetEmail = (email || order.customer_email || '').trim();
+    if (!targetEmail || !targetEmail.includes('@')) {
+      return res.status(400).json({ message: 'Please provide a valid email address to send the bill' });
+    }
+
+    const emailResult = await sendOrderEmail(order, targetEmail);
+    if (emailResult.success) {
+      res.json({ 
+        success: true, 
+        message: `Invoice bill successfully sent to ${targetEmail}`,
+        details: emailResult 
+      });
+    } else {
+      res.status(500).json({ 
+        success: false, 
+        message: `Could not send email: ${emailResult.error || emailResult.reason}`,
+        details: emailResult 
+      });
+    }
+  } catch (error) {
+    console.error('Error in sendInvoiceEmail:', error);
+    res.status(500).json({ message: 'Server error sending invoice email' });
+  }
+};
+
+exports.downloadInvoiceHtml = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    const html = generateInvoiceHtml(order);
+    const rawId = (order._id || id).toString();
+    const shortId = rawId.length > 8 ? rawId.slice(-8) : rawId;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="Invoice_${shortId}.html"`);
+    res.send(html);
+  } catch (error) {
+    console.error('Error downloading invoice:', error);
+    res.status(500).json({ message: 'Server error downloading invoice' });
   }
 };

@@ -1,0 +1,336 @@
+/* WhatsApp Notification Modal Styling */
+.wa-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+  animation: waFadeIn 0.2s ease-out;
+}
+
+.wa-modal-card {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 580px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: waScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes waFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes waScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Modal Header */
+.wa-modal-header {
+  background: linear-gradient(135deg, #128C7E 0%, #075E54 100%);
+  color: #ffffff;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wa-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.wa-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.wa-header-title h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.wa-header-title p {
+  margin: 2px 0 0 0;
+  font-size: 0.82rem;
+  opacity: 0.88;
+}
+
+.wa-close-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wa-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+/* Info Grid */
+.wa-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem 0.75rem 1.5rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.wa-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.wa-info-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.wa-info-value {
+  font-size: 0.92rem;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.wa-phone-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #075E54;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.wa-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+  width: fit-content;
+}
+
+.wa-status-badge.wa-status-confirmed {
+  background: rgba(46, 204, 113, 0.15);
+  color: #27ae60;
+}
+
+.wa-status-badge.wa-status-preparing {
+  background: rgba(243, 156, 18, 0.15);
+  color: #d35400;
+}
+
+.wa-status-badge.wa-status-out_for_delivery {
+  background: rgba(52, 152, 219, 0.15);
+  color: #2980b9;
+}
+
+.wa-status-badge.wa-status-delivered {
+  background: rgba(37, 211, 102, 0.2);
+  color: #128C7E;
+}
+
+.wa-status-badge.wa-status-cancelled {
+  background: rgba(231, 76, 60, 0.15);
+  color: #c0392b;
+}
+
+.wa-status-badge.wa-status-pending {
+  background: rgba(241, 196, 15, 0.2);
+  color: #b7791f;
+}
+
+/* Message Section */
+.wa-message-section {
+  padding: 1.25rem 1.5rem;
+}
+
+.wa-message-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.wa-message-header label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.wa-copy-btn {
+  background: none;
+  border: 1px solid #e2e8f0;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.wa-copy-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.wa-message-textarea {
+  width: 100%;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  line-height: 1.5;
+  color: #1e293b;
+  background: #fdfdfd;
+  resize: vertical;
+  min-height: 140px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.wa-message-textarea:focus {
+  outline: none;
+  border-color: #25D366;
+  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.18);
+  background: #fff;
+}
+
+/* Modal Footer */
+.wa-modal-footer {
+  padding: 1rem 1.5rem;
+  background: #f8fafc;
+  border-top: 1px solid #edf2f7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.wa-auto-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #64748b;
+  user-select: none;
+}
+
+.wa-auto-toggle input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: #25D366;
+  width: 16px;
+  height: 16px;
+}
+
+.wa-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.wa-btn-secondary {
+  padding: 0.6rem 1.1rem;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.wa-btn-secondary:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+.wa-btn-primary {
+  padding: 0.6rem 1.25rem;
+  background: #25D366;
+  border: none;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);
+  transition: all 0.2s ease;
+}
+
+.wa-btn-primary:hover:not(:disabled) {
+  background: #20bd5a;
+  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.45);
+  transform: translateY(-1px);
+}
+
+.wa-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+@media (max-width: 540px) {
+  .wa-info-grid {
+    grid-template-columns: 1fr;
+  }
+  .wa-modal-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .wa-action-buttons {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

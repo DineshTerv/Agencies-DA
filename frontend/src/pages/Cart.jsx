@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Trash2, Plus, Minus, ArrowRight, CheckCircle2, Phone, MapPin, User, Package, Calendar } from 'lucide-react';
+import { 
+  Trash2, Plus, Minus, ArrowRight, CheckCircle2, Phone, MapPin, User, Package, Calendar,
+  MessageCircle, Send, ExternalLink, Copy, Check, Smartphone, Share2, Mail, Download, Printer
+} from 'lucide-react';
 import axios from 'axios';
 import { PRODUCTS_DATA } from '../data/products';
+import { cleanPhoneNumber, generateStatusMessage, getWhatsAppUrl, openWhatsApp } from '../utils/whatsapp';
+import { downloadInvoiceFile, sendInvoiceEmail } from '../utils/invoice';
 import './Cart.css';
 
 const Cart = ({ cartItems, setCartItems }) => {
@@ -30,6 +35,35 @@ const Cart = ({ cartItems, setCartItems }) => {
   });
   const [orderPlacedData, setOrderPlacedData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sendViaWhatsApp, setSendViaWhatsApp] = useState(true);
+  const [customWaPhone, setCustomWaPhone] = useState('');
+  const [waCopied, setWaCopied] = useState(false);
+  const [waToastMsg, setWaToastMsg] = useState('');
+  const [showWaPreview, setShowWaPreview] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(null);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSentStatus, setEmailSentStatus] = useState('');
+  const [customEmailInput, setCustomEmailInput] = useState('');
+
+  // Auto-launch countdown effect for instant WhatsApp opening
+  React.useEffect(() => {
+    if (redirectCountdown === null) return;
+    if (redirectCountdown <= 0) {
+      if (orderPlacedData) {
+        const phoneToUse = customWaPhone || orderPlacedData.customer_phone;
+        const msg = generateStatusMessage(orderPlacedData, orderPlacedData.status || 'PENDING');
+        openWhatsApp(phoneToUse, msg, true);
+      }
+      setRedirectCountdown(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setRedirectCountdown(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [redirectCountdown, orderPlacedData, customWaPhone]);
 
   const totalAmount = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
@@ -133,6 +167,10 @@ const Cart = ({ cartItems, setCartItems }) => {
 
       setOrderPlacedData(orderData);
       setCartItems([]);
+
+      if (sendViaWhatsApp && formData.phone) {
+        setRedirectCountdown(2);
+      }
     } catch (err) {
       console.error("API error:", err.message);
       // Fallback: save locally anyway so user never loses order
@@ -155,12 +193,60 @@ const Cart = ({ cartItems, setCartItems }) => {
 
       setOrderPlacedData(fallbackOrder);
       setCartItems([]);
+
+      if (sendViaWhatsApp && formData.phone) {
+        setRedirectCountdown(2);
+      }
     }
 
     setIsSubmitting(false);
   };
 
+  const handleManualSendWhatsApp = (targetPhone = null) => {
+    if (!orderPlacedData) return;
+    setRedirectCountdown(null);
+    const phoneToUse = targetPhone || customWaPhone || orderPlacedData.customer_phone;
+    const msg = generateStatusMessage(orderPlacedData, orderPlacedData.status || 'PENDING');
+    openWhatsApp(phoneToUse, msg, true);
+    setWaToastMsg(`Connecting to WhatsApp for +${cleanPhoneNumber(phoneToUse)}...`);
+    setTimeout(() => setWaToastMsg(''), 4000);
+  };
+
+  const handleCopyWaMessage = () => {
+    if (!orderPlacedData) return;
+    const msg = generateStatusMessage(orderPlacedData, orderPlacedData.status || 'PENDING');
+    navigator.clipboard.writeText(msg);
+    setWaCopied(true);
+    setTimeout(() => setWaCopied(false), 2500);
+  };
+
+  const handleSendEmail = async (overrideEmail = null) => {
+    if (!orderPlacedData) return;
+    const target = (overrideEmail || customEmailInput || orderPlacedData.customer_email || '').trim();
+    if (!target || !target.includes('@')) {
+      alert('Please enter a valid email address.');
+      return;
+    }
+    setEmailSending(true);
+    setEmailSentStatus('');
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const res = await sendInvoiceEmail(orderPlacedData.id, target, API_URL);
+      setEmailSentStatus(`✅ Bill successfully sent to ${target}!`);
+      setTimeout(() => setEmailSentStatus(''), 5000);
+    } catch (err) {
+      console.error('Email error:', err);
+      setEmailSentStatus(`⚠️ Error sending email: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
   if (orderPlacedData) {
+    const rawPhone = orderPlacedData.customer_phone || '';
+    const cleanPhone = cleanPhoneNumber(rawPhone);
+    const waMessage = generateStatusMessage(orderPlacedData, orderPlacedData.status || 'PENDING');
+
     return (
       <div className="order-success-container glass">
         <div className="success-header">
@@ -168,6 +254,196 @@ const Cart = ({ cartItems, setCartItems }) => {
           <h2>Order Placed Successfully!</h2>
           <p className="order-id-badge">Order ID: <strong>#{orderPlacedData.id}</strong></p>
           <span className="order-status-tag">Status: PENDING CONFIRMATION</span>
+        </div>
+
+        {/* ── AUTOMATIC INSTANT WHATSAPP REDIRECT BANNER ── */}
+        {redirectCountdown !== null && (
+          <div className="wa-auto-redirect-banner">
+            <div className="wa-spinner-pulse">
+              <MessageCircle size={24} color="#25D366" />
+            </div>
+            <div className="wa-auto-text">
+              <strong>🚀 Automatically opening WhatsApp in {redirectCountdown}s...</strong>
+              <p>Sending your complete itemized bill to WhatsApp (+{cleanPhone})</p>
+            </div>
+            <div className="wa-auto-btns">
+              <button 
+                type="button" 
+                className="wa-now-btn"
+                onClick={() => {
+                  setRedirectCountdown(null);
+                  handleManualSendWhatsApp(rawPhone);
+                }}
+              >
+                Open Now ➔
+              </button>
+              <button 
+                type="button" 
+                className="wa-cancel-btn"
+                onClick={() => setRedirectCountdown(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {waToastMsg && (
+          <div className="wa-toast-alert">
+            <MessageCircle size={18} color="#25D366" />
+            <span>{waToastMsg}</span>
+          </div>
+        )}
+
+        {/* ── DEDICATED WHATSAPP NOTIFICATION CARD ── */}
+        <div className="wa-order-banner glass">
+          <div className="wa-banner-header">
+            <div className="wa-brand-icon">
+              <MessageCircle size={28} color="#fff" />
+            </div>
+            <div className="wa-banner-text">
+              <h3>Get Order Bill & Live Tracking on WhatsApp</h3>
+              <p>
+                {cleanPhone 
+                  ? `Your complete order receipt is ready to be sent to WhatsApp (+${cleanPhone})`
+                  : 'Receive your order invoice and tracking updates directly on WhatsApp'}
+              </p>
+            </div>
+          </div>
+
+          <div className="wa-banner-actions">
+            <button 
+              type="button" 
+              className="wa-primary-send-btn" 
+              onClick={() => handleManualSendWhatsApp(rawPhone)}
+            >
+              <MessageCircle size={18} />
+              <span>Send Order to My WhatsApp {cleanPhone ? `(+${cleanPhone})` : ''}</span>
+              <ExternalLink size={15} />
+            </button>
+
+            <button 
+              type="button" 
+              className="wa-secondary-copy-btn" 
+              onClick={handleCopyWaMessage}
+            >
+              {waCopied ? <><Check size={16} color="#27ae60" /> Copied Receipt</> : <><Copy size={16} /> Copy Message</>}
+            </button>
+
+            <button 
+              type="button" 
+              className="wa-preview-toggle-btn"
+              onClick={() => setShowWaPreview(!showWaPreview)}
+            >
+              {showWaPreview ? 'Hide Message Preview' : 'Preview Message'}
+            </button>
+          </div>
+
+          {/* Optional alternate WhatsApp phone input */}
+          <div className="wa-alternate-phone-row">
+            <Smartphone size={15} className="wa-alt-icon" />
+            <span>Send to another number:</span>
+            <input 
+              type="tel" 
+              placeholder="e.g. 9443695071" 
+              value={customWaPhone} 
+              onChange={e => setCustomWaPhone(e.target.value)} 
+              className="wa-alt-input"
+            />
+            <button 
+              type="button" 
+              className="wa-alt-send-btn"
+              onClick={() => handleManualSendWhatsApp(customWaPhone)}
+              disabled={!customWaPhone}
+            >
+              <Send size={14} /> Send
+            </button>
+          </div>
+
+          {/* Expandable WhatsApp Message Preview */}
+          {showWaPreview && (
+            <div className="wa-message-preview-box">
+              <label>WhatsApp Message Content:</label>
+              <pre>{waMessage}</pre>
+            </div>
+          )}
+        </div>
+
+        {/* ── EMAIL INVOICE & DOWNLOAD BILL CARD ── */}
+        <div className="email-invoice-banner glass">
+          <div className="email-banner-header">
+            <div className="email-brand-icon">
+              <Mail size={26} color="#fff" />
+            </div>
+            <div className="email-banner-text">
+              <h3>Invoice Bill & Direct Download</h3>
+              <p>
+                {orderPlacedData.customer_email 
+                  ? `Your official invoice bill has been sent to ${orderPlacedData.customer_email}` 
+                  : 'Receive your itemized invoice directly in your email inbox'}
+              </p>
+            </div>
+          </div>
+
+          <div className="email-banner-actions">
+            <button 
+              type="button" 
+              className="download-invoice-btn" 
+              onClick={() => downloadInvoiceFile(orderPlacedData)}
+              title="Download standalone invoice HTML/PDF"
+            >
+              <Download size={18} />
+              <span>Download Bill (HTML/PDF)</span>
+            </button>
+
+            <button 
+              type="button" 
+              className="send-email-btn" 
+              onClick={() => handleSendEmail()}
+              disabled={emailSending}
+              title="Send bill directly to email"
+            >
+              <Mail size={18} />
+              <span>{emailSending ? 'Sending Bill...' : 'Send Bill to Email'}</span>
+            </button>
+
+            <button 
+              type="button" 
+              className="print-receipt-btn" 
+              onClick={() => window.print()}
+              title="Print bill receipt"
+            >
+              <Printer size={18} />
+              <span>Print Receipt</span>
+            </button>
+          </div>
+
+          {/* Optional alternate email input */}
+          <div className="email-input-row">
+            <Mail size={15} style={{ color: '#0984e3' }} />
+            <span>Send to another email:</span>
+            <input 
+              type="email" 
+              placeholder="e.g. shopowner@gmail.com" 
+              value={customEmailInput} 
+              onChange={e => setCustomEmailInput(e.target.value)} 
+              className="email-alt-input"
+            />
+            <button 
+              type="button" 
+              className="email-alt-send-btn"
+              onClick={() => handleSendEmail(customEmailInput)}
+              disabled={emailSending || !customEmailInput}
+            >
+              <Send size={14} /> Send
+            </button>
+          </div>
+
+          {emailSentStatus && (
+            <div className="email-sent-badge">
+              {emailSentStatus}
+            </div>
+          )}
         </div>
 
         <div className="order-receipt-grid">
@@ -270,23 +546,30 @@ const Cart = ({ cartItems, setCartItems }) => {
             />
           </div>
           <div className="form-group">
-            <label>Phone Number (Mobile) *</label>
+            <label>Phone Number (WhatsApp Mobile) *</label>
             <input 
               required 
               type="tel" 
               value={formData.phone} 
               onChange={e => setFormData({...formData, phone: e.target.value})} 
-              placeholder="e.g. 9876543210" 
+              placeholder="10-digit mobile e.g. 9876543210" 
             />
+            <small className="field-hint">
+              💬 Your order bill & live tracking updates will be delivered to this WhatsApp number.
+            </small>
           </div>
           <div className="form-group">
-            <label>Email Address</label>
+            <label>Email Address (to receive bill directly) *</label>
             <input 
+              required
               type="email" 
               value={formData.email} 
               onChange={e => setFormData({...formData, email: e.target.value})} 
-              placeholder="you@example.com (optional)" 
+              placeholder="e.g. yourname@gmail.com" 
             />
+            <small className="field-hint" style={{ color: '#0984e3' }}>
+              ✉️ Your official invoice bill with items, prices, and tracking will be sent directly to this email ID.
+            </small>
           </div>
           <div className="form-group">
             <label>Delivery Address *</label>
@@ -297,6 +580,20 @@ const Cart = ({ cartItems, setCartItems }) => {
               onChange={e => setFormData({...formData, address: e.target.value})} 
               placeholder="Shop Name, Door No, Street, Landmark, City/Town..."
             ></textarea>
+          </div>
+          
+          <div className="wa-form-optin-box">
+            <label className="wa-optin-label">
+              <input 
+                type="checkbox" 
+                checked={sendViaWhatsApp} 
+                onChange={e => setSendViaWhatsApp(e.target.checked)} 
+              />
+              <span className="wa-optin-text">
+                <MessageCircle size={16} color="#25D366" /> 
+                Send order receipt & status updates to my WhatsApp
+              </span>
+            </label>
           </div>
           
           <div className="payment-note">

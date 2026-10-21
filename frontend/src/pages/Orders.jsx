@@ -3,10 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { 
   Package, ShoppingBag, Clock, CheckCircle2, Truck, AlertCircle, 
   MapPin, Phone, User, Calendar, RefreshCw, ChevronRight, ArrowLeft,
-  Search, FileText, Check, ChevronDown, ChevronUp, ShoppingCart
+  Search, FileText, Check, ChevronDown, ChevronUp, ShoppingCart,
+  MessageCircle, ExternalLink, Download, Mail
 } from 'lucide-react';
 import axios from 'axios';
 import { PRODUCTS_DATA } from '../data/products';
+import { cleanPhoneNumber, generateStatusMessage, openWhatsApp } from '../utils/whatsapp';
+import { downloadInvoiceFile, sendInvoiceEmail } from '../utils/invoice';
 import './Orders.css';
 
 const Orders = ({ addToCart }) => {
@@ -17,6 +20,11 @@ const Orders = ({ addToCart }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState(null);
   const [expandedOrderIds, setExpandedOrderIds] = useState({});
+  const [emailSendingMap, setEmailSendingMap] = useState({});
+  const [emailStatusMap, setEmailStatusMap] = useState({});
+  const [modalEmail, setModalEmail] = useState('');
+  const [modalEmailSending, setModalEmailSending] = useState(false);
+  const [modalEmailMsg, setModalEmailMsg] = useState('');
 
   const savedUsername = localStorage.getItem('username') || '';
   const authToken = localStorage.getItem('authToken') || localStorage.getItem('adminToken') || localStorage.getItem('workerToken');
@@ -185,6 +193,51 @@ const Orders = ({ addToCart }) => {
       });
       alert(`Added ${order.items.length} items from Order #${order.id} to your cart!`);
       navigate('/cart');
+    }
+  };
+
+  const handleWhatsAppStatus = (order) => {
+    if (!order) return;
+    const msg = generateStatusMessage(order, order.status);
+    const res = openWhatsApp(order.customer_phone, msg);
+    if (res.blocked) {
+      alert('WhatsApp popup was blocked by your browser. Please allow popups or visit WhatsApp directly.');
+    }
+  };
+
+  const handleSendOrderEmail = async (order, customEmail = null) => {
+    const targetEmail = (customEmail || order.customer_email || prompt('Enter email address to send the bill:', order.customer_email || ''))?.trim();
+    if (!targetEmail) return;
+
+    if (!targetEmail.includes('@') || !targetEmail.includes('.')) {
+      alert('Please enter a valid email address.');
+      return;
+    }
+
+    const orderKey = order.id || order._id;
+    setEmailSendingMap(prev => ({ ...prev, [orderKey]: true }));
+    setEmailStatusMap(prev => ({ ...prev, [orderKey]: null }));
+
+    try {
+      const res = await sendInvoiceEmail(orderKey, targetEmail, API_URL);
+      if (res.success) {
+        setEmailStatusMap(prev => ({
+          ...prev,
+          [orderKey]: { success: true, msg: `Invoice bill successfully sent to ${targetEmail}!` }
+        }));
+      } else {
+        setEmailStatusMap(prev => ({
+          ...prev,
+          [orderKey]: { success: false, msg: res.error || 'Failed to dispatch email' }
+        }));
+      }
+    } catch (err) {
+      setEmailStatusMap(prev => ({
+        ...prev,
+        [orderKey]: { success: false, msg: err.message || 'Error dispatching email' }
+      }));
+    } finally {
+      setEmailSendingMap(prev => ({ ...prev, [orderKey]: false }));
     }
   };
 
@@ -374,6 +427,12 @@ const Orders = ({ addToCart }) => {
                         <span><strong>Phone:</strong> {order.customer_phone}</span>
                       </div>
                     )}
+                    {order.customer_email && (
+                      <div className="info-row">
+                        <Mail size={15} className="info-icon" />
+                        <span><strong>Email:</strong> {order.customer_email}</span>
+                      </div>
+                    )}
                     {order.customer_address && (
                       <div className="info-row">
                         <MapPin size={15} className="info-icon" />
@@ -391,8 +450,34 @@ const Orders = ({ addToCart }) => {
                     
                     <div className="order-action-buttons">
                       <button 
+                        className="download-btn"
+                        onClick={() => downloadInvoiceFile(order)}
+                        title="Download Offline HTML/PDF Invoice Bill"
+                      >
+                        <Download size={15} /> Download Bill
+                      </button>
+                      <button 
+                        className="email-btn"
+                        onClick={() => handleSendOrderEmail(order)}
+                        disabled={emailSendingMap[order.id]}
+                        title={`Directly send bill to ${order.customer_email || 'Email ID'}`}
+                      >
+                        <Mail size={15} /> {emailSendingMap[order.id] ? 'Sending...' : 'Email Bill'}
+                      </button>
+                      <button 
+                        className="wa-status-btn" 
+                        onClick={() => handleWhatsAppStatus(order)}
+                        title="Get live order items and status on WhatsApp"
+                      >
+                        <MessageCircle size={15} /> WhatsApp
+                      </button>
+                      <button 
                         className="invoice-btn" 
-                        onClick={() => setSelectedOrderForInvoice(order)}
+                        onClick={() => {
+                          setSelectedOrderForInvoice(order);
+                          setModalEmail(order.customer_email || '');
+                          setModalEmailMsg('');
+                        }}
                         title="View printable bill receipt"
                       >
                         <FileText size={15} /> View Receipt
@@ -405,6 +490,12 @@ const Orders = ({ addToCart }) => {
                         <ShoppingCart size={15} /> Buy Again
                       </button>
                     </div>
+
+                    {emailStatusMap[order.id] && (
+                      <div className={`order-email-notification ${emailStatusMap[order.id].success ? 'success' : 'error'}`}>
+                        {emailStatusMap[order.id].success ? '✓' : '⚠️'} {emailStatusMap[order.id].msg}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -438,6 +529,9 @@ const Orders = ({ addToCart }) => {
               <div style={{ textAlign: 'right' }}>
                 <p><strong>Billed To:</strong> {selectedOrderForInvoice.customer_name}</p>
                 <p><strong>Phone:</strong> {selectedOrderForInvoice.customer_phone}</p>
+                {selectedOrderForInvoice.customer_email && (
+                  <p><strong>Email:</strong> {selectedOrderForInvoice.customer_email}</p>
+                )}
                 <p><strong>Address:</strong> {selectedOrderForInvoice.customer_address || 'Store Delivery'}</p>
               </div>
             </div>
@@ -474,8 +568,68 @@ const Orders = ({ addToCart }) => {
             </table>
 
             <div className="receipt-footer-note">
+              {/* Direct Email sending bar inside Receipt modal */}
+              <div className="modal-email-send-bar">
+                <div className="modal-email-input-wrap">
+                  <Mail size={16} className="modal-mail-icon" />
+                  <input 
+                    type="email" 
+                    placeholder="Enter email to receive this bill..." 
+                    value={modalEmail}
+                    onChange={e => setModalEmail(e.target.value)}
+                    className="modal-email-input"
+                  />
+                  <button 
+                    type="button"
+                    className="modal-send-email-btn"
+                    disabled={modalEmailSending}
+                    onClick={async () => {
+                      if (!modalEmail.trim() || !modalEmail.includes('@')) {
+                        alert('Please enter a valid email address.');
+                        return;
+                      }
+                      setModalEmailSending(true);
+                      setModalEmailMsg('');
+                      try {
+                        const res = await sendInvoiceEmail(selectedOrderForInvoice.id, modalEmail.trim(), API_URL);
+                        if (res.success) {
+                          setModalEmailMsg(`✓ Bill successfully dispatched to ${modalEmail.trim()}!`);
+                        } else {
+                          setModalEmailMsg(`⚠️ Failed: ${res.error || 'Server error'}`);
+                        }
+                      } catch (e) {
+                        setModalEmailMsg(`⚠️ Error: ${e.message}`);
+                      } finally {
+                        setModalEmailSending(false);
+                      }
+                    }}
+                  >
+                    {modalEmailSending ? 'Sending...' : 'Send Bill to Email'}
+                  </button>
+                </div>
+                {modalEmailMsg && (
+                  <p className={`modal-email-status-text ${modalEmailMsg.startsWith('✓') ? 'success' : 'error'}`}>
+                    {modalEmailMsg}
+                  </p>
+                )}
+              </div>
+
               <p>Thank you for choosing Dinesh Agencies! For bulk orders and inquiries, contact us.</p>
               <div className="receipt-modal-actions">
+                <button 
+                  className="primary-btn download-receipt-btn"
+                  onClick={() => downloadInvoiceFile(selectedOrderForInvoice)}
+                  title="Download offline HTML bill invoice"
+                >
+                  <Download size={16} /> Download Bill
+                </button>
+                <button 
+                  className="primary-btn wa-receipt-btn" 
+                  onClick={() => handleWhatsAppStatus(selectedOrderForInvoice)}
+                  title="Share or send this receipt to WhatsApp"
+                >
+                  <MessageCircle size={16} /> WhatsApp
+                </button>
                 <button className="primary-btn" onClick={() => window.print()}>🖨️ Print Receipt</button>
                 <button className="close-btn-outline" onClick={() => setSelectedOrderForInvoice(null)}>Close</button>
               </div>

@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, LogOut, PackageSearch, ClipboardList, CheckCircle, TrendingUp, Store, Truck } from 'lucide-react';
+import { ShoppingCart, LogOut, PackageSearch, ClipboardList, CheckCircle, TrendingUp, Store, Truck, MessageCircle, Download, Mail } from 'lucide-react';
 import axios from 'axios';
 import './Worker.css'; 
 import { PRODUCTS_DATA } from '../data/products';
+import { openWhatsApp, generateStatusMessage } from '../utils/whatsapp';
+import { downloadInvoiceFile, sendInvoiceEmail } from '../utils/invoice';
 
 const WorkerDashboard = () => {
   const [activeTab, setActiveTab] = useState('take-order');
   const [cart, setCart] = useState([]);
   const [products, setProducts] = useState([]);
   const [storeName, setStoreName] = useState('');
+  const [storePhone, setStorePhone] = useState('');
+  const [storeEmail, setStoreEmail] = useState('');
+  const [storeAddress, setStoreAddress] = useState('');
   const [recentOrders, setRecentOrders] = useState([]);
   const [deliveries, setDeliveries] = useState([]);
   const navigate = useNavigate();
@@ -58,9 +63,19 @@ const WorkerDashboard = () => {
 
   const updateDeliveryStatus = async (orderId, newStatus) => {
     try {
-      await axios.put(`${API_URL}/orders/${orderId}/status`, { status: newStatus });
+      await axios.put(`${API_URL}/orders/${orderId}/status`, { 
+        status: newStatus,
+        worker_name: workerId || 'Delivery Partner'
+      });
       loadDeliveries();
-      alert(`Order ${orderId} marked as ${newStatus}`);
+      const ord = deliveries.find(d => d.id === orderId || d._id === orderId);
+      if (ord) {
+        const msg = generateStatusMessage({ ...ord, status: newStatus }, newStatus, workerId || 'Delivery Partner');
+        const waRes = openWhatsApp(ord.customer_phone, msg);
+        if (waRes.blocked) {
+          alert(`Order status updated to ${newStatus}. WhatsApp popup was blocked by your browser. Please click the green WhatsApp button below to send the message!`);
+        }
+      }
     } catch (e) {
       console.error("API update failed", e);
       alert("Failed to update status.");
@@ -113,12 +128,15 @@ const WorkerDashboard = () => {
     }
     
     const orderIdStr = "ORD-" + Math.floor(Math.random() * 900000 + 100000);
+    const phoneToUse = storePhone.trim() || 'Worker Placed';
+    const addressToUse = storeAddress.trim() || 'Store Delivery Address';
     
     const newOrderFull = {
       id: orderIdStr,
       customer_name: storeName + ` (by ${workerId})`,
-      customer_phone: "Worker Placed",
-      customer_address: "Store Address Pending",
+      customer_phone: phoneToUse,
+      customer_email: storeEmail.trim(),
+      customer_address: addressToUse,
       username: workerId,
       total_amount: totalAmount,
       status: 'PENDING',
@@ -137,10 +155,11 @@ const WorkerDashboard = () => {
     try {
       await axios.post(`${API_URL}/orders`, {
         customer_name: storeName + ` (by ${workerId})`,
-        customer_phone: "Worker Placed",
-        customer_address: "Store Address Pending",
+        customer_phone: phoneToUse,
+        customer_email: storeEmail.trim(),
+        customer_address: addressToUse,
         total_amount: totalAmount,
-        items: cart.map(i => ({ product_id: i.id, name: i.name, quantity: i.quantity, price: i.price }))
+        items: cart.map(i => ({ product_id: i.id, name: i.name, variant: i.variant, quantity: i.quantity, price: i.price }))
       });
     } catch (e) {
       console.log("Order API failed.", e);
@@ -154,8 +173,17 @@ const WorkerDashboard = () => {
       status: 'PENDING'
     }, ...recentOrders]);
     
+    // If phone was provided, automatically launch WhatsApp with receipt for store owner
+    if (storePhone.trim()) {
+      const msg = generateStatusMessage(newOrderFull, 'PENDING', workerId || 'Worker');
+      openWhatsApp(storePhone.trim(), msg, true);
+    }
+
     setCart([]);
     setStoreName('');
+    setStorePhone('');
+    setStoreEmail('');
+    setStoreAddress('');
     setOrderView('catalog');
     alert("Order successfully placed for " + storeName);
     setActiveTab('history');
@@ -331,7 +359,29 @@ const WorkerDashboard = () => {
                         value={storeName} 
                         onChange={e => setStoreName(e.target.value)} 
                         required 
-                        placeholder="Enter Store Name (e.g. Balaji Shop)" 
+                        placeholder="Enter Store Name (e.g. Balaji Shop) *" 
+                        className="store-input"
+                      />
+                      <input 
+                        type="tel" 
+                        value={storePhone} 
+                        onChange={e => setStorePhone(e.target.value)} 
+                        required 
+                        placeholder="Store WhatsApp / Mobile (e.g. 9876543210) *" 
+                        className="store-input"
+                      />
+                      <input 
+                        type="email" 
+                        value={storeEmail} 
+                        onChange={e => setStoreEmail(e.target.value)} 
+                        placeholder="Store Email ID (to receive bill directly)" 
+                        className="store-input"
+                      />
+                      <input 
+                        type="text" 
+                        value={storeAddress} 
+                        onChange={e => setStoreAddress(e.target.value)} 
+                        placeholder="Store Delivery Address / Area (optional)" 
                         className="store-input"
                       />
                       
@@ -342,7 +392,7 @@ const WorkerDashboard = () => {
                       )}
                       
                       <button type="submit" className="worker-submit-btn" disabled={cart.length === 0 || totalAmount < 150} style={{ opacity: totalAmount < 150 ? 0.5 : 1 }}>
-                        <CheckCircle size={18} /> Confirm Order
+                        <CheckCircle size={18} /> Confirm & Send WhatsApp Bill
                       </button>
                     </form>
                   </div>
@@ -397,22 +447,68 @@ const WorkerDashboard = () => {
                         <span className="woc-amount">₹{order.total_amount}</span>
                       </div>
                       
-                      {order.status !== 'DELIVERED' && (
-                        <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-                          <button 
-                            onClick={() => updateDeliveryStatus(order.id, 'OUT_FOR_DELIVERY')}
-                            style={{ padding: '8px', background: '#e17055', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', flex: 1, fontSize:'0.85rem' }}
-                          >
-                            Out for Delivery
-                          </button>
-                          <button 
-                            onClick={() => updateDeliveryStatus(order.id, 'DELIVERED')}
-                            style={{ padding: '8px', background: '#00b894', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', flex: 1, fontSize:'0.85rem' }}
-                          >
-                            Mark Delivered
-                          </button>
-                        </div>
-                      )}
+                      <div style={{ marginTop: '15px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {order.status !== 'DELIVERED' && (
+                          <>
+                            <button 
+                              onClick={() => updateDeliveryStatus(order.id, 'OUT_FOR_DELIVERY')}
+                              style={{ padding: '8px 12px', background: '#e17055', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', flex: 1, fontSize:'0.85rem', fontWeight: 'bold' }}
+                            >
+                              🚚 Out for Delivery
+                            </button>
+                            <button 
+                              onClick={() => updateDeliveryStatus(order.id, 'DELIVERED')}
+                              style={{ padding: '8px 12px', background: '#00b894', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', flex: 1, fontSize:'0.85rem', fontWeight: 'bold' }}
+                            >
+                              🎉 Mark Delivered
+                            </button>
+                          </>
+                        )}
+                        <button 
+                          onClick={() => downloadInvoiceFile(order)}
+                          style={{ padding: '8px 12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', fontSize:'0.85rem', fontWeight: 'bold' }}
+                          title="Download Offline HTML/PDF Bill"
+                        >
+                          <Download size={14} /> Bill
+                        </button>
+                        <button 
+                          onClick={async () => {
+                            const target = (order.customer_email || prompt(`Send bill to customer email for Order #${order.id}:`, order.customer_email || ''))?.trim();
+                            if (!target) return;
+                            if (!target.includes('@') || !target.includes('.')) {
+                              alert('Please enter a valid email address.');
+                              return;
+                            }
+                            try {
+                              const res = await sendInvoiceEmail(order.id || order._id, target, API_URL);
+                              if (res.success) {
+                                alert(`✓ Invoice bill dispatched to ${target}!`);
+                              } else {
+                                alert(`⚠️ Failed: ${res.error || 'Server error'}`);
+                              }
+                            } catch (e) {
+                              alert(`⚠️ Error: ${e.message}`);
+                            }
+                          }}
+                          style={{ padding: '8px 12px', background: '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', fontSize:'0.85rem', fontWeight: 'bold' }}
+                          title={`Send bill to ${order.customer_email || 'Customer Email'}`}
+                        >
+                          <Mail size={14} /> Email
+                        </button>
+                        <button 
+                          onClick={() => {
+                            const msg = generateStatusMessage(order, order.status, workerId || 'Delivery Partner');
+                            const res = openWhatsApp(order.customer_phone, msg);
+                            if (res.blocked) {
+                              alert('WhatsApp popup was blocked. Please allow popups or use WhatsApp Web.');
+                            }
+                          }}
+                          style={{ padding: '8px 12px', background: '#25D366', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', fontSize:'0.85rem', fontWeight: 'bold' }}
+                          title="Message customer on WhatsApp"
+                        >
+                          <MessageCircle size={15} /> WhatsApp
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}

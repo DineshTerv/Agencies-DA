@@ -536,9 +536,10 @@
   display: flex;
   gap: 0.5rem;
   margin-top: 4px;
+  flex-wrap: wrap;
 }
 
-.invoice-btn, .reorder-btn {
+.wa-status-btn, .invoice-btn, .reorder-btn, .download-btn, .email-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -548,6 +549,99 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+}
+
+.download-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.download-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.email-btn {
+  background: #7c3aed;
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+}
+
+.email-btn:hover:not(:disabled) {
+  background: #6d28d9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+}
+
+.email-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.order-email-notification {
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.order-email-notification.success {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.order-email-notification.error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.wa-status-btn {
+  background: #25D366;
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.25);
+}
+
+.wa-status-btn:hover {
+  background: #20ba5a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+}
+
+.wa-receipt-btn {
+  background: #25D366 !important;
+  color: #ffffff !important;
+  border: none !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wa-receipt-btn:hover {
+  background: #20ba5a !important;
+}
+
+.download-receipt-btn {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border: none !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.download-receipt-btn:hover {
+  background: #1d4ed8 !important;
 }
 
 .invoice-btn {
@@ -732,6 +826,78 @@
   margin-top: 1.5rem;
   padding-top: 1rem;
   border-top: 1px dashed #dfe4ea;
+}
+
+.modal-email-send-bar {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.25rem;
+  text-align: left;
+}
+
+.modal-email-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-mail-icon {
+  color: #7c3aed;
+  flex-shrink: 0;
+}
+
+.modal-email-input {
+  flex: 1;
+  padding: 0.55rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.88rem;
+  outline: none;
+  background: #ffffff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.modal-email-input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+.modal-send-email-btn {
+  background: #7c3aed;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.modal-send-email-btn:hover:not(:disabled) {
+  background: #6d28d9;
+}
+
+.modal-send-email-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.modal-email-status-text {
+  font-size: 0.82rem;
+  margin: 0.5rem 0 0 0;
+  font-weight: 600;
+}
+
+.modal-email-status-text.success {
+  color: #059669;
+}
+
+.modal-email-status-text.error {
+  color: #dc2626;
 }
 
 .receipt-footer-note p {
