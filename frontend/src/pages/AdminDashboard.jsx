@@ -234,7 +234,27 @@ const AdminDashboard = () => {
         }
       }
 
-      if (ordersData) {
+      // Merge backend orders with any local orders
+      const localOrders = JSON.parse(localStorage.getItem('da_orders') || '[]');
+      const combined = [...(ordersData || []), ...localOrders];
+      const seen = new Set();
+      const unique = [];
+      for (const ord of combined) {
+        const idKey = (ord.id || ord._id || '').toString();
+        if (idKey && !seen.has(idKey)) {
+          seen.add(idKey);
+          unique.push({
+            ...ord,
+            id: idKey,
+            created_at: new Date(ord.createdAt || ord.created_at || Date.now()).toLocaleString(),
+            items: ord.items || []
+          });
+        }
+      }
+
+      if (unique.length > 0) {
+        setOrders(unique);
+      } else if (ordersData) {
         const formatted = ordersData.map(order => ({
           ...order,
           id: order.id || (order._id ? order._id.toString() : ''),
@@ -245,6 +265,22 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       console.error("Error fetching orders:", err.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleRefreshAll = async () => {
+    setIsSyncing(true);
+    try {
+      await Promise.allSettled([
+        loadOrders(),
+        loadProducts(),
+        loadCustomers()
+      ]);
+      showWaToast('Dashboard refreshed with latest data!');
+    } catch (e) {
+      console.warn("Refresh error:", e);
     } finally {
       setIsSyncing(false);
     }
@@ -551,14 +587,24 @@ const AdminDashboard = () => {
           <div className="dashboard-container">
             <div className="section-header">
               <h1>Dashboard Overview</h1>
-              <button className="refresh-btn" onClick={loadOrders} title="Reload Data">
-                <RefreshCw size={16} /> Refresh
+              <button 
+                className="refresh-btn" 
+                onClick={handleRefreshAll} 
+                disabled={isSyncing} 
+                title="Reload all dashboard metrics, orders, products, and customers"
+              >
+                <RefreshCw size={16} className={isSyncing ? "spinning" : ""} /> 
+                {isSyncing ? 'Refreshing...' : 'Refresh'}
               </button>
             </div>
 
             {/* Live Metrics Cards */}
             <div className="metric-cards-row">
-              <div className="metric-card">
+              <div 
+                className="metric-card" 
+                onClick={() => { setActiveTab('orders'); setOrderStatusFilter('ALL'); }}
+                title="Click to view all Customer Orders"
+              >
                 <div className="mc-icon" style={{background: 'rgba(255, 159, 67, 0.15)', color: '#ff9f43'}}>
                   <ShoppingBag size={28} />
                 </div>
@@ -566,10 +612,15 @@ const AdminDashboard = () => {
                   <h3>{orders.length}</h3>
                   <p>Total Customer Orders</p>
                   <span className="mc-badge success">{pendingCount} Pending confirmation</span>
+                  <span className="mc-link-hint">View Orders →</span>
                 </div>
               </div>
 
-              <div className="metric-card">
+              <div 
+                className="metric-card" 
+                onClick={() => { setActiveTab('orders'); setOrderStatusFilter('DELIVERED'); }}
+                title="Click to view Delivered Orders & Revenue"
+              >
                 <div className="mc-icon" style={{background: 'rgba(29, 209, 161, 0.15)', color: '#1dd1a1'}}>
                   <CheckCircle size={28} />
                 </div>
@@ -577,10 +628,15 @@ const AdminDashboard = () => {
                   <h3>₹{totalRevenue.toLocaleString()}</h3>
                   <p>Total Order Revenue</p>
                   <span className="mc-badge success">{deliveredCount} Orders Delivered</span>
+                  <span className="mc-link-hint">View Delivered →</span>
                 </div>
               </div>
 
-              <div className="metric-card">
+              <div 
+                className="metric-card" 
+                onClick={() => setActiveTab('products')}
+                title="Click to open Product Management"
+              >
                 <div className="mc-icon" style={{background: 'rgba(108, 92, 231, 0.15)', color: '#6c5ce7'}}>
                   <Package size={28} />
                 </div>
@@ -588,10 +644,15 @@ const AdminDashboard = () => {
                   <h3>{products.length}</h3>
                   <p>Catalog Products</p>
                   <span className="mc-badge success">All categories active</span>
+                  <span className="mc-link-hint">Manage Products →</span>
                 </div>
               </div>
 
-              <div className="metric-card">
+              <div 
+                className="metric-card" 
+                onClick={() => setActiveTab('workers')}
+                title="Click to open Field Workers Management"
+              >
                 <div className="mc-icon" style={{background: 'rgba(0, 184, 148, 0.15)', color: '#00b894'}}>
                   <Users size={28} />
                 </div>
@@ -599,6 +660,7 @@ const AdminDashboard = () => {
                   <h3>{workers.length}</h3>
                   <p>Active Field Workers</p>
                   <span className="mc-badge success">Online</span>
+                  <span className="mc-link-hint">Manage Workers →</span>
                 </div>
               </div>
             </div>

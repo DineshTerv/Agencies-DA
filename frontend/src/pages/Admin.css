@@ -357,13 +357,38 @@
   align-items: center;
   gap: 1.5rem;
   box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-  border: 1px solid rgba(0,0,0,0.03);
-  transition: transform 0.2s;
+  border: 1px solid rgba(0,0,0,0.06);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  user-select: none;
 }
 
 .metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  border-color: rgba(255, 159, 67, 0.5);
+}
+
+.metric-card:active {
+  transform: translateY(-1px);
+}
+
+.mc-link-hint {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #ff9f43;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.85;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.metric-card:hover .mc-link-hint {
+  opacity: 1;
+  transform: translateX(3px);
 }
 
 .mc-icon {
@@ -593,11 +618,26 @@
   transition: all 0.2s ease;
 }
 
-.refresh-btn:hover {
+.refresh-btn:hover:not(:disabled) {
   background: rgba(255, 159, 67, 0.1);
   border-color: #ff9f43;
   color: #e67e22;
   transform: translateY(-1px);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.refresh-btn .spinning, .refresh-btn .spin {
+  animation: adminSpin 0.9s linear infinite;
+}
+
+@keyframes adminSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .orders-toolbar {
