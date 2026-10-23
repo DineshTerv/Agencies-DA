@@ -66,8 +66,15 @@
 }
 
 .hero-content-left {
-  flex: 1;
+  flex: 1.1;
   min-width: 300px;
+}
+
+.hero-associate-container {
+  flex: 0.9;
+  min-width: 320px;
+  display: flex;
+  justify-content: center;
 }
 
 .hero-subtitle {

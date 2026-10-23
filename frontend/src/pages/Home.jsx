@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingCart, ArrowRight, Mic } from 'lucide-react';
 import axios from 'axios';
 import { PRODUCTS_DATA } from '../data/products';
-import './Home.css'; // Make sure we have a dedicated CSS file
+import HeroSalesAssociate from '../components/HeroSalesAssociate';
+import './Home.css';
 
 const CATEGORY_TABS = [
   { name: 'All Categories', icon: '🗂️' },
@@ -79,8 +80,11 @@ const Home = ({ addToCart, searchQuery = '', cartItems = [], setCartItems }) => 
       matchesCategory = validCategories.includes(p.category_name);
     }
     
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          p.category_name.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = 
+      p.name.toLowerCase().includes(q) || 
+      p.category_name.toLowerCase().includes(q) ||
+      (p.variant && p.variant.toLowerCase().includes(q));
                           
     return matchesCategory && matchesSearch;
   });
@@ -103,39 +107,50 @@ const Home = ({ addToCart, searchQuery = '', cartItems = [], setCartItems }) => 
       </div>
 
       <div className="container">
-        {/* Hero Section styled like Sabka Bazzar */}
+        {/* Hero Section with Interactive Animated Sales Associate */}
         {activeCategory === 'All Categories' && (
-          <section className="sabka-hero">
-            <div className="hero-content-left">
-              <h4 className="hero-subtitle">Quality You Can Trust</h4>
-              <h1 className="hero-title">Your trusted partner<br/>for everyday needs</h1>
-              <p className="hero-desc">"Bringing the best of Lotte, Cycle Pure, and more straight to your shelves. Premium wholesale delivered right to your door."</p>
-              
-              <div className="hero-actions">
-                <button className="explore-btn" onClick={() => {
-                  window.scrollTo({ top: document.querySelector('.products-grid').offsetTop, behavior: 'smooth' });
-                }}>
-                  Explore the collection <ArrowRight size={18} />
-                </button>
+          <>
+            <section className="sabka-hero">
+              <div className="hero-content-left">
+                <h4 className="hero-subtitle">Quality You Can Trust</h4>
+                <h1 className="hero-title">Your trusted partner<br/>for everyday needs</h1>
+                <p className="hero-desc">"Bringing the best of Lotte, Cycle Pure, and more straight to your shelves. Premium wholesale delivered right to your door."</p>
+                
+                <div className="hero-actions">
+                  <button className="explore-btn" onClick={() => {
+                    const el = document.querySelector('.products-grid');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}>
+                    Explore the collection <ArrowRight size={18} />
+                  </button>
+                </div>
+
+                <div className="hero-suggestions">
+                  <span className="suggest-label">Trending now:</span>
+                  <span className="suggest-pill" onClick={() => setSearchQuery('Cycle')}>Cycle Agarbatti 100s</span>
+                  <span className="suggest-pill" onClick={() => setSearchQuery('Choco Pie')}>Choco Pie</span>
+                  <span className="suggest-pill" onClick={() => setSearchQuery('Pitambari')}>Pitambari</span>
+                  <span className="suggest-pill" onClick={() => setSearchQuery('Agarbatti')}>Pooja Items</span>
+                </div>
               </div>
 
-              <div className="hero-suggestions">
-                <span className="suggest-label">Trending now:</span>
-                <span className="suggest-pill">Choco Pie</span>
-                <span className="suggest-pill">Cycle Agarbatti</span>
-                <span className="suggest-pill">Pooja Combo</span>
+              {/* Animated Female Sales & Packing Associate */}
+              <div className="hero-associate-container">
+                <HeroSalesAssociate addToCart={addToCart} />
               </div>
-            </div>
+            </section>
 
-            <div className="hero-marquee-container">
-              <div style={{ textAlign: 'center', marginBottom: '15px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                Our Premium Brands & Top Products
+            {/* Premium Brands & Highlights Marquee */}
+            <div className="hero-marquee-container" style={{ marginBottom: '2.5rem' }}>
+              <div style={{ textAlign: 'center', marginBottom: '12px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.85rem' }}>
+                Our Premium Brands & Top Fast-Moving Products
               </div>
               <div className="marquee-track">
                 {(() => {
-                  // Select a mix of interesting images
                   const marqueeImages = [
+                    "/cycle_pure_100s.jpg",
                     "/combo_image.jpg",
+                    "/cycle_pure_three_in_one.jpg",
                     "/90_rs.jpg",
                     "/cycle_yagna.jpg",
                     "/stick.jpg",
@@ -143,9 +158,7 @@ const Home = ({ addToCart, searchQuery = '', cartItems = [], setCartItems }) => 
                     "https://m.media-amazon.com/images/I/71Hq5mPf17L._AC_UF350,350_QL80_.jpg", // Choco pie
                     "https://cycle.in/cdn/shop/files/Woods-1000x1000.jpg" // Woods
                   ];
-                  // Duplicate the images to create a seamless infinite loop
                   const loopImages = [...marqueeImages, ...marqueeImages];
-                  
                   return loopImages.map((img, idx) => (
                     <div key={idx} className="marquee-item">
                       <img src={img} alt="Product highlight" />
@@ -154,16 +167,16 @@ const Home = ({ addToCart, searchQuery = '', cartItems = [], setCartItems }) => 
                 })()}
               </div>
             </div>
-          </section>
+          </>
         )}
 
         {/* Product Grid */}
         <section className="products-grid">
           {filteredProducts.map(product => (
             <div key={product.id} className="card">
-              <div className="product-image-container" style={{ position: 'relative' }}>
+              <div className="product-image-container">
                 {product.discount_text && (
-                  <span style={{ position: 'absolute', top: '10px', left: '10px', background: '#e17055', color: 'white', padding: '4px 8px', fontSize: '0.8rem', borderRadius: '4px', zIndex: 1, fontWeight: 'bold' }}>
+                  <span className="product-discount-tag">
                     {product.discount_text}
                   </span>
                 )}
@@ -176,34 +189,38 @@ const Home = ({ addToCart, searchQuery = '', cartItems = [], setCartItems }) => 
               </div>
               <div className="product-info">
                 <span className="product-category">{product.category_name}</span>
-                <h3 className="product-title">{product.name}</h3>
-                <div style={{fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem'}}>{product.variant}</div>
+                <h3 className="product-title" onClick={() => setSelectedProduct(product)}>
+                  {product.name}
+                </h3>
+                <div className="product-variant">{product.variant || 'Standard'}</div>
                 <div className="product-price">
-                  ₹{product.price}
+                  <span>₹{product.price}</span>
                   {product.original_price && (
-                    <span style={{textDecoration: 'line-through', color: '#999', fontSize: '0.9rem', marginLeft: '8px', fontWeight: 'normal'}}>
+                    <span className="product-original-price">
                       ₹{product.original_price}
                     </span>
                   )}
                 </div>
-                {(() => {
-                  const qty = getCartQuantity(product.id);
-                  return qty > 0 ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px', background: '#f8f9fa', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
-                      <button onClick={() => decreaseQuantity(product.id)} style={{ padding: '8px 15px', background: 'white', color: '#333', border: 'none', borderRight: '1px solid #e2e8f0', cursor: 'pointer', fontWeight: 'bold', flex: 1 }}>-</button>
-                      <span style={{ fontWeight: 'bold', padding: '0 15px', color: '#333' }}>{qty}</span>
-                      <button onClick={() => addToCart(product)} style={{ padding: '8px 15px', background: 'white', color: '#333', border: 'none', borderLeft: '1px solid #e2e8f0', cursor: 'pointer', fontWeight: 'bold', flex: 1 }}>+</button>
-                    </div>
-                  ) : Number(product.stock) === 0 ? (
-                    <button className="out-of-stock-btn" disabled style={{ marginTop: '10px', width: '100%', padding: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', background: '#e0e0e0', color: '#888', border: 'none', borderRadius: '8px', cursor: 'not-allowed', fontWeight: 'bold' }}>
-                      Out of Stock
-                    </button>
-                  ) : (
-                    <button className="add-to-cart-btn" onClick={() => addToCart(product)} style={{ marginTop: '10px', width: '100%', padding: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                      <ShoppingCart size={18} /> Add to Cart
-                    </button>
-                  );
-                })()}
+                <div className="product-card-actions">
+                  {(() => {
+                    const qty = getCartQuantity(product.id);
+                    return qty > 0 ? (
+                      <div className="card-quantity-control">
+                        <button onClick={() => decreaseQuantity(product.id)} className="card-qty-btn" title="Decrease quantity">-</button>
+                        <span className="card-qty-val">{qty}</span>
+                        <button onClick={() => addToCart(product)} className="card-qty-btn" title="Increase quantity">+</button>
+                      </div>
+                    ) : Number(product.stock) === 0 ? (
+                      <button className="out-of-stock-btn" disabled>
+                        Out of Stock
+                      </button>
+                    ) : (
+                      <button className="add-to-cart-btn" onClick={() => addToCart(product)}>
+                        <ShoppingCart size={18} /> Add to Cart
+                      </button>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           ))}

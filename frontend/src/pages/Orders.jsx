@@ -4,7 +4,7 @@ import {
   Package, ShoppingBag, Clock, CheckCircle2, Truck, AlertCircle, 
   MapPin, Phone, User, Calendar, RefreshCw, ChevronRight, ArrowLeft,
   Search, FileText, Check, ChevronDown, ChevronUp, ShoppingCart,
-  MessageCircle, ExternalLink, Download, Mail
+  MessageCircle, ExternalLink, Download, Mail, Shield
 } from 'lucide-react';
 import axios from 'axios';
 import { PRODUCTS_DATA } from '../data/products';
@@ -28,6 +28,7 @@ const Orders = ({ addToCart }) => {
 
   const savedUsername = localStorage.getItem('username') || '';
   const authToken = localStorage.getItem('authToken') || localStorage.getItem('adminToken') || localStorage.getItem('workerToken');
+  const isAdmin = localStorage.getItem('userRole') === 'admin';
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -115,6 +116,21 @@ const Orders = ({ addToCart }) => {
   useEffect(() => {
     loadUserOrders();
   }, [savedUsername]);
+
+  // If redirected with ?orderId=..., auto-expand and scroll to that order
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const targetOrderId = params.get('orderId');
+    if (targetOrderId && orders.length > 0) {
+      setExpandedOrderIds(prev => ({ ...prev, [targetOrderId]: true }));
+      setTimeout(() => {
+        const el = document.getElementById(`order-card-${targetOrderId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 350);
+    }
+  }, [orders]);
 
   // Status badge helper
   const getStatusBadge = (status) => {
@@ -263,6 +279,54 @@ const Orders = ({ addToCart }) => {
 
   return (
     <div className="orders-page-container">
+      {/* ── ADMIN NOTICE BANNER (when admin views customer orders) ── */}
+      {isAdmin && (
+        <div className="admin-orders-redirect-banner glass" style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '1rem 1.5rem',
+          borderRadius: '14px',
+          marginBottom: '1.5rem',
+          background: 'linear-gradient(135deg, rgba(255, 159, 67, 0.12), rgba(255, 255, 255, 0.95))',
+          border: '1.5px solid rgba(255, 159, 67, 0.4)',
+          boxShadow: '0 4px 15px rgba(255, 159, 67, 0.1)',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255, 159, 67, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff9f43' }}>
+              <Shield size={22} />
+            </div>
+            <div>
+              <h4 style={{ margin: 0, color: '#2d3436', fontSize: '1rem', fontWeight: 700 }}>Administrator Portal Shortcut</h4>
+              <p style={{ margin: '2px 0 0 0', color: '#636e72', fontSize: '0.85rem' }}>
+                You are viewing the Customer Order side. To manage incoming wholesale store orders, assign field workers, or change order status:
+              </p>
+            </div>
+          </div>
+          <Link 
+            to="/admin/orders" 
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#ff9f43',
+              color: '#fff',
+              padding: '0.6rem 1.2rem',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              textDecoration: 'none',
+              boxShadow: '0 4px 12px rgba(255, 159, 67, 0.3)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <ShoppingBag size={16} /> Open Admin Orders Portal →
+          </Link>
+        </div>
+      )}
+
       {/* ── TOP HEADER / BREADCRUMB ── */}
       <div className="orders-header glass">
         <div className="header-left">
@@ -335,14 +399,31 @@ const Orders = ({ addToCart }) => {
           <h2>No Orders Found</h2>
           <p>
             {orders.length === 0 
-              ? "You haven't placed any orders with us yet. Browse our wholesale grocery & puja catalog!" 
+              ? (isAdmin 
+                  ? "As an administrator, you have not placed personal retail orders under this account. Customer orders are managed in the Admin Orders Portal!" 
+                  : "You haven't placed any orders with us yet. Browse our wholesale grocery & puja catalog!") 
               : "No orders match your current filter or search criteria."}
           </p>
-          <Link to="/">
-            <button className="primary-btn browse-btn">
-              🛍️ Explore & Order Products Now
-            </button>
-          </Link>
+          {isAdmin ? (
+            <div style={{ marginTop: '1.2rem', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Link to="/admin/orders">
+                <button className="primary-btn browse-btn" style={{ background: '#ff9f43', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <ShoppingBag size={18} /> Go to Admin Orders Management →
+                </button>
+              </Link>
+              <Link to="/">
+                <button className="primary-btn browse-btn" style={{ background: '#2d3436' }}>
+                  🛍️ Browse Store Front
+                </button>
+              </Link>
+            </div>
+          ) : (
+            <Link to="/">
+              <button className="primary-btn browse-btn">
+                🛍️ Explore & Order Products Now
+              </button>
+            </Link>
+          )}
         </div>
       ) : (
         <div className="orders-list">
@@ -352,7 +433,7 @@ const Orders = ({ addToCart }) => {
             const itemsCount = (order.items || []).reduce((sum, it) => sum + (it.quantity || 1), 0);
 
             return (
-              <div key={order.id} className="order-card glass">
+              <div key={order.id} id={`order-card-${order.id}`} className="order-card glass">
                 {/* ── CARD HEADER ── */}
                 <div className="order-card-header">
                   <div className="order-header-left">

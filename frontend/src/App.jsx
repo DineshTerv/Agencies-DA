@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { ShoppingCart, X, Phone, User, Shield, Briefcase, Store, LogIn, ExternalLink, ChevronDown, Package, Heart } from 'lucide-react';
+import { ShoppingCart, X, Phone, User, Shield, Briefcase, Store, LogIn, ExternalLink, ChevronDown, Package, Heart, LayoutDashboard, ShoppingBag, Users } from 'lucide-react';
 import './App.css';
 
 import Home from './pages/Home';
@@ -24,7 +24,11 @@ function AppContent() {
   React.useEffect(() => {
     const path = location.pathname;
     if (path === '/login') document.title = 'DA - Sign In & Portals';
-    else if (path.includes('/admin')) document.title = 'DA - ADMIN PAGE';
+    else if (path.includes('/admin/orders')) document.title = 'DA - Admin Orders';
+    else if (path.includes('/admin/products')) document.title = 'DA - Admin Products';
+    else if (path.includes('/admin/workers')) document.title = 'DA - Admin Workers';
+    else if (path.includes('/admin/customers')) document.title = 'DA - Admin Customers';
+    else if (path.includes('/admin')) document.title = 'DA - Admin Dashboard';
     else if (path.includes('/worker')) document.title = 'DA - WORKER PAGE';
     else if (path === '/cart') document.title = 'DA - CART';
     else if (path === '/orders') document.title = 'DA - MY ORDERS';
@@ -150,9 +154,11 @@ function AppContent() {
               if (location.pathname.includes('/admin')) {
                 return (
                   <>
-                    <Link to="/" className="nav-link-item"><Store size={17} /> Products</Link>
-                    <Link to="/worker/dashboard" className="nav-link-item worker-nav"><Briefcase size={17} /> Worker Page</Link>
-                    <Link to="/admin/dashboard" className="nav-link-item admin-nav active"><Shield size={17} /> Admin Page</Link>
+                    <Link to="/admin/dashboard" className={`nav-link-item admin-nav ${location.pathname === '/admin/dashboard' || location.pathname === '/admin' ? 'active' : ''}`}><LayoutDashboard size={17} /> Overview</Link>
+                    <Link to="/admin/orders" className={`nav-link-item ${location.pathname.includes('/admin/orders') ? 'active' : ''}`} style={{ color: '#ff9f43', fontWeight: 'bold' }}><ShoppingBag size={17} /> Orders</Link>
+                    <Link to="/admin/products" className={`nav-link-item ${location.pathname.includes('/admin/products') ? 'active' : ''}`}><Package size={17} /> Products</Link>
+                    <Link to="/admin/workers" className={`nav-link-item ${location.pathname.includes('/admin/workers') ? 'active' : ''}`}><Briefcase size={17} /> Workers</Link>
+                    <Link to="/" className="nav-link-item" title="Browse customer catalog store"><Store size={17} /> Store View</Link>
                     {savedUsername ? (
                       <div className="nav-link-item user-nav" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setIsProfileModalOpen(true)}>
                         <span style={{ fontSize: '18px', marginRight: '5px' }}>{avatarEmoji}</span> Profile ({displayName})
@@ -179,16 +185,25 @@ function AppContent() {
                         <User size={16} /> My Profile
                       </div>
                       {localStorage.getItem('userRole') === 'admin' && (
-                        <Link to="/admin/dashboard" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
-                          <Shield size={16} /> Admin Dashboard
-                        </Link>
+                        <>
+                          <Link to="/admin/dashboard" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                            <Shield size={16} /> Admin Overview
+                          </Link>
+                          <Link to="/admin/orders" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                            <ShoppingBag size={16} /> Admin Orders
+                          </Link>
+                        </>
                       )}
                       {localStorage.getItem('userRole') === 'worker' && (
                         <Link to="/worker/dashboard" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
                           <Briefcase size={16} /> Worker Dashboard
                         </Link>
                       )}
-                      <Link to="/orders" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                      <Link 
+                        to={localStorage.getItem('userRole') === 'admin' ? "/admin/orders" : "/orders"} 
+                        className="dropdown-item" 
+                        onClick={() => setIsProfileMenuOpen(false)}
+                      >
                         <Package size={16} /> Orders
                       </Link>
                       <div className="dropdown-item" onClick={() => {
@@ -271,8 +286,15 @@ function AppContent() {
           <Route path="/worker" element={<Navigate to="/worker/dashboard" replace />} />
           <Route path="/worker/login" element={<Navigate to="/login" replace />} />
 
-          {/* Portals */}
+          {/* Admin Portals & Dedicated Sub-Pages */}
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/overview" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/admin/orders" element={<AdminDashboard />} />
+          <Route path="/admin/products" element={<AdminDashboard />} />
+          <Route path="/admin/workers" element={<AdminDashboard />} />
+          <Route path="/admin/customers" element={<AdminDashboard />} />
+          <Route path="/admin/:tab" element={<AdminDashboard />} />
+
           <Route path="/worker/dashboard" element={<WorkerDashboard />} />
 
           {/* Fallback */}
@@ -292,12 +314,14 @@ function AppContent() {
           </div>
 
           {location.pathname.includes('/admin') && (
-            <div className="footer-portal-links" style={{ justifyContent: 'center', marginTop: '1rem' }}>
+            <div className="footer-portal-links" style={{ justifyContent: 'center', marginTop: '1rem', flexWrap: 'wrap', gap: '8px' }}>
               <span style={{fontWeight: 'bold', color: '#555'}}>Direct Links:</span>
-              <Link to="/" className="footer-pill" style={{background: 'rgba(255, 159, 67, 0.15)', color: '#e67e22'}}>🏪 Products</Link>
-              <Link to="/login" className="footer-pill user-pill">🛍️ User / Customer Page</Link>
-              <Link to="/worker/dashboard" className="footer-pill worker-pill">🏭 Worker Page</Link>
-              <Link to="/admin/dashboard" className="footer-pill admin-pill">🛡️ Admin Page</Link>
+              <Link to="/admin/dashboard" className="footer-pill admin-pill">🛡️ Admin Overview</Link>
+              <Link to="/admin/orders" className="footer-pill" style={{background: 'rgba(255, 159, 67, 0.15)', color: '#e67e22', fontWeight: 'bold'}}>📦 Admin Orders</Link>
+              <Link to="/admin/products" className="footer-pill" style={{background: 'rgba(108, 92, 231, 0.15)', color: '#6c5ce7'}}>🏷️ Products</Link>
+              <Link to="/admin/workers" className="footer-pill worker-pill">🏭 Workers</Link>
+              <Link to="/" className="footer-pill" style={{background: 'rgba(46, 213, 115, 0.15)', color: '#2ed573'}}>🏪 Store View</Link>
+              <Link to="/login" className="footer-pill user-pill">🛍️ User / Customer Login</Link>
             </div>
           )}
         </div>

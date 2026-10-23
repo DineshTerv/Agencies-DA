@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, Package, ShoppingBag, LogOut, Plus, Edit2, Trash2, X, Users, User,
   Eye, Phone, MapPin, Calendar, Clock, CheckCircle, AlertCircle, Search, RefreshCw,
-  MessageCircle, Send, Download, Mail
+  MessageCircle, Send, Download, Mail, ExternalLink
 } from 'lucide-react';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import './Admin.css';
@@ -66,12 +66,53 @@ const INITIAL_DEMO_ORDERS = [
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const location = useLocation();
+
+  const getTabFromPath = () => {
+    const path = location.pathname.toLowerCase();
+    if (path.includes('/admin/orders')) return 'orders';
+    if (path.includes('/admin/products')) return 'products';
+    if (path.includes('/admin/workers')) return 'workers';
+    if (path.includes('/admin/customers')) return 'customers';
+    return 'dashboard';
+  };
+
+  const [activeTab, setActiveTab] = useState(() => getTabFromPath());
   const [products, setProducts] = useState(PRODUCTS_DATA);
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('ALL');
+
+  // Synchronize state with URL pathname & query parameters
+  useEffect(() => {
+    const tabFromPath = getTabFromPath();
+    setActiveTab(tabFromPath);
+
+    const searchParams = new URLSearchParams(location.search);
+    const statusParam = searchParams.get('status');
+    if (statusParam) {
+      setOrderStatusFilter(statusParam.toUpperCase());
+    }
+    const orderIdParam = searchParams.get('orderId');
+    if (orderIdParam && orders.length > 0) {
+      const match = orders.find(o => String(o.id) === String(orderIdParam) || String(o._id) === String(orderIdParam));
+      if (match) setSelectedOrder(match);
+    }
+  }, [location.pathname, location.search, orders.length]);
+
+  const handleTabSwitch = (tabName, queryObj = null) => {
+    setActiveTab(tabName);
+    let path = tabName === 'dashboard' ? '/admin/dashboard' : `/admin/${tabName}`;
+    if (queryObj) {
+      const qs = new URLSearchParams(queryObj).toString();
+      if (qs) path += `?${qs}`;
+    }
+    navigate(path);
+    if (tabName === 'orders') loadOrders();
+    else if (tabName === 'customers') loadCustomers();
+    else if (tabName === 'products') loadProducts();
+  };
   
   // WhatsApp Notification States
   const [autoWhatsApp, setAutoWhatsApp] = useState(() => {
@@ -541,35 +582,35 @@ const AdminDashboard = () => {
         <nav>
           <button 
             className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`} 
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => handleTabSwitch('dashboard')}
           >
             <LayoutDashboard size={20} /> Overview
           </button>
 
           <button 
             className={`nav-btn ${activeTab === 'orders' ? 'active' : ''}`} 
-            onClick={() => { setActiveTab('orders'); loadOrders(); }}
+            onClick={() => handleTabSwitch('orders')}
           >
             <ShoppingBag size={20} /> Orders ({orders.length})
           </button>
 
           <button 
             className={`nav-btn ${activeTab === 'products' ? 'active' : ''}`} 
-            onClick={() => setActiveTab('products')}
+            onClick={() => handleTabSwitch('products')}
           >
             <Package size={20} /> Products ({products.length})
           </button>
 
           <button 
             className={`nav-btn ${activeTab === 'workers' ? 'active' : ''}`} 
-            onClick={() => setActiveTab('workers')}
+            onClick={() => handleTabSwitch('workers')}
           >
             <Users size={20} /> Workers ({workers.length})
           </button>
 
           <button 
             className={`nav-btn ${activeTab === 'customers' ? 'active' : ''}`} 
-            onClick={() => { setActiveTab('customers'); loadCustomers(); }}
+            onClick={() => handleTabSwitch('customers')}
           >
             <User size={20} /> Customers ({customers.length})
           </button>
@@ -602,8 +643,8 @@ const AdminDashboard = () => {
             <div className="metric-cards-row">
               <div 
                 className="metric-card" 
-                onClick={() => { setActiveTab('orders'); setOrderStatusFilter('ALL'); }}
-                title="Click to view all Customer Orders"
+                onClick={() => handleTabSwitch('orders', { status: 'ALL' })}
+                title="Click to redirect to Customer Orders side"
               >
                 <div className="mc-icon" style={{background: 'rgba(255, 159, 67, 0.15)', color: '#ff9f43'}}>
                   <ShoppingBag size={28} />
@@ -612,14 +653,14 @@ const AdminDashboard = () => {
                   <h3>{orders.length}</h3>
                   <p>Total Customer Orders</p>
                   <span className="mc-badge success">{pendingCount} Pending confirmation</span>
-                  <span className="mc-link-hint">View Orders →</span>
+                  <span className="mc-link-hint">Redirect to Orders Side →</span>
                 </div>
               </div>
 
               <div 
                 className="metric-card" 
-                onClick={() => { setActiveTab('orders'); setOrderStatusFilter('DELIVERED'); }}
-                title="Click to view Delivered Orders & Revenue"
+                onClick={() => handleTabSwitch('orders', { status: 'DELIVERED' })}
+                title="Click to redirect to Delivered Orders"
               >
                 <div className="mc-icon" style={{background: 'rgba(29, 209, 161, 0.15)', color: '#1dd1a1'}}>
                   <CheckCircle size={28} />
@@ -628,14 +669,14 @@ const AdminDashboard = () => {
                   <h3>₹{totalRevenue.toLocaleString()}</h3>
                   <p>Total Order Revenue</p>
                   <span className="mc-badge success">{deliveredCount} Orders Delivered</span>
-                  <span className="mc-link-hint">View Delivered →</span>
+                  <span className="mc-link-hint">View Delivered Orders →</span>
                 </div>
               </div>
 
               <div 
                 className="metric-card" 
-                onClick={() => setActiveTab('products')}
-                title="Click to open Product Management"
+                onClick={() => handleTabSwitch('products')}
+                title="Click to redirect to Product Management"
               >
                 <div className="mc-icon" style={{background: 'rgba(108, 92, 231, 0.15)', color: '#6c5ce7'}}>
                   <Package size={28} />
@@ -650,8 +691,8 @@ const AdminDashboard = () => {
 
               <div 
                 className="metric-card" 
-                onClick={() => setActiveTab('workers')}
-                title="Click to open Field Workers Management"
+                onClick={() => handleTabSwitch('workers')}
+                title="Click to redirect to Field Workers Management"
               >
                 <div className="mc-icon" style={{background: 'rgba(0, 184, 148, 0.15)', color: '#00b894'}}>
                   <Users size={28} />
@@ -873,6 +914,16 @@ const AdminDashboard = () => {
                             >
                               <MessageCircle size={15} /> WhatsApp
                             </button>
+                            <Link 
+                              to={`/orders?orderId=${order.id}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="icon-btn" 
+                              title="Redirect to Customer Tracking view (Order Side)"
+                              style={{ color: '#e67e22', background: 'rgba(255, 159, 67, 0.15)', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none', fontWeight: 600, fontSize: '0.8rem' }}
+                            >
+                              <ExternalLink size={13} /> Order Side
+                            </Link>
                             <button 
                               className="icon-btn" 
                               title="View Customer & Items Detail"
@@ -1289,6 +1340,15 @@ const AdminDashboard = () => {
                     >
                       <Mail size={15} /> Send to Email
                     </button>
+                    <Link 
+                      to={`/orders?orderId=${selectedOrder.id}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      style={{ padding: '8px 14px', borderRadius: '8px', background: 'rgba(255, 159, 67, 0.15)', color: '#e67e22', border: '1px solid #ff9f43', textDecoration: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, fontSize: '0.85rem' }}
+                      title="Redirect to view this order on the Customer Tracking (Order Side)"
+                    >
+                      <ExternalLink size={15} /> View on Order Side ↗
+                    </Link>
                   </div>
                 </div>
 
