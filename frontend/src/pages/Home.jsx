@@ -470,71 +470,49 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
             </div>
           </div>
 
-          {/* ── ALL PRODUCTS CATALOG (UNIFIED ALIGNED GRID) ── */}
-          <div id="wholesale-catalog-section" style={{ paddingTop: '1rem' }}>
+          {/* ── ALL WHOLESALE PRODUCTS (PURE PHOTO SHOWCASE - NO PRODUCT CARDS) ── */}
+          <div id="wholesale-catalog-section" className="swiggy-showcase-section">
             <div className="catalog-section-header">
-              <h2 className="catalog-title">
-                {activeCategory === 'All' ? 'All Products in Our Wholesale Catalog' : `${activeCategory} Collection`}
-              </h2>
-              <p className="catalog-subtitle">
-                Showing {filteredProducts.length} authentic wholesale products with direct retail pricing
-              </p>
+              <div className="showcase-header-row">
+                <div>
+                  <h2 className="catalog-title">
+                    {activeCategory === 'All' ? 'Order our best wholesale varieties' : `${activeCategory} Collection`}
+                  </h2>
+                  <p className="catalog-subtitle">
+                    Showing authentic stock items from Dinesh Agencies wholesale inventory ({filteredProducts.length} items)
+                  </p>
+                </div>
+                {activeCategory !== 'All' && (
+                  <button 
+                    type="button" 
+                    className="clear-cat-filter-btn" 
+                    onClick={() => setActiveCategory('All')}
+                  >
+                    View All Products
+                  </button>
+                )}
+              </div>
             </div>
 
-            <section className="products-grid">
+            <div className="swiggy-photo-only-grid">
               {filteredProducts.map(product => (
-                <div key={product.id} className="card">
-                  <div className="product-image-container">
-                    {product.discount_text && (
-                      <span className="product-discount-tag">
-                        {product.discount_text}
-                      </span>
-                    )}
+                <div 
+                  key={product.id} 
+                  className="swiggy-photo-only-card"
+                  onClick={() => setSelectedProduct(product)}
+                  title={`View ${product.name}`}
+                >
+                  <div className="swiggy-photo-disc">
                     <img 
-                      src={product.image_url || 'https://via.placeholder.com/250x200?text=No+Image'} 
+                      src={product.image_url || 'https://via.placeholder.com/200?text=Product'} 
                       alt={product.name} 
-                      onClick={() => setSelectedProduct(product)} 
-                      style={{ cursor: 'pointer' }}
+                      loading="lazy"
                     />
                   </div>
-                  <div className="product-info">
-                    <span className="product-category">{product.category_name}</span>
-                    <h3 className="product-title" onClick={() => setSelectedProduct(product)}>
-                      {product.name}
-                    </h3>
-                    <div className="product-variant">{product.variant || 'Standard'}</div>
-                    <div className="product-price">
-                      <span>₹{product.price}</span>
-                      {product.original_price && (
-                        <span className="product-original-price">
-                          ₹{product.original_price}
-                        </span>
-                      )}
-                    </div>
-                    <div className="product-card-actions">
-                      {(() => {
-                        const qty = getCartQuantity(product.id);
-                        return qty > 0 ? (
-                          <div className="card-quantity-control">
-                            <button onClick={() => decreaseQuantity(product.id)} className="card-qty-btn" title="Decrease quantity">-</button>
-                            <span className="card-qty-val">{qty}</span>
-                            <button onClick={() => addToCart(product)} className="card-qty-btn" title="Increase quantity">+</button>
-                          </div>
-                        ) : Number(product.stock) === 0 ? (
-                          <button className="out-of-stock-btn" disabled>
-                            Out of Stock
-                          </button>
-                        ) : (
-                          <button className="add-to-cart-btn" onClick={() => addToCart(product)}>
-                            <ShoppingCart size={18} /> Add to Cart
-                          </button>
-                        );
-                      })()}
-                    </div>
-                  </div>
+                  <span className="swiggy-photo-name">{product.name}</span>
                 </div>
               ))}
-            </section>
+            </div>
           </div>
 
           {/* ── WHATSAPP APP DOWNLOAD BANNER (PHOTO 3) ── */}
@@ -795,90 +773,59 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
       )}
 
       {/* ────────────────────────────────────────────────────────────
-          5. PRODUCT DETAILS MODAL (PRESERVED)
+          5. PURE PHOTO PREVIEW LIGHTBOX (NO CART CARDS)
           ──────────────────────────────────────────────────────────── */}
       {selectedProduct && (
         <div 
-          className="modal-overlay" 
-          onClick={() => setSelectedProduct(null)} 
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}
+          className="photo-lightbox-backdrop" 
+          onClick={() => setSelectedProduct(null)}
         >
           <div 
-            className="modal-content glass" 
-            onClick={e => e.stopPropagation()} 
-            style={{ background: 'white', borderRadius: '16px', padding: '24px', maxWidth: '620px', width: '100%', position: 'relative', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 60px rgba(0,0,0,0.3)' }}
+            className="photo-lightbox-modal" 
+            onClick={e => e.stopPropagation()}
           >
             <button 
-              className="close-btn" 
-              onClick={() => setSelectedProduct(null)} 
-              style={{ position: 'absolute', top: '12px', right: '16px', background: 'none', border: 'none', fontSize: '2rem', cursor: 'pointer', color: '#666' }}
+              type="button"
+              className="photo-lightbox-close" 
+              onClick={() => setSelectedProduct(null)}
             >
               &times;
             </button>
-            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginTop: '10px' }}>
-              <div style={{ flex: '1 1 240px', textAlign: 'center' }}>
-                <img 
-                  src={selectedProduct.image_url || 'https://via.placeholder.com/250x200?text=No+Image'} 
-                  alt={selectedProduct.name} 
-                  style={{ maxWidth: '100%', maxHeight: '280px', objectFit: 'contain', borderRadius: '12px' }} 
-                />
-              </div>
-              <div style={{ flex: '1 1 260px' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#fc8019', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  {selectedProduct.category_name}
-                </span>
-                <h2 style={{ margin: '4px 0 6px', color: '#02060c', fontSize: '1.4rem' }}>{selectedProduct.name}</h2>
-                <p style={{ color: '#64748b', marginBottom: '14px', fontSize: '0.9rem' }}>Variant: <strong>{selectedProduct.variant}</strong></p>
-                
-                <div style={{ background: '#fff7ed', padding: '14px', borderRadius: '12px', marginBottom: '16px', border: '1px solid #ffedd5' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                    <h3 style={{ color: '#fc8019', fontSize: '1.9rem', margin: 0, fontWeight: 900 }}>
-                      ₹{selectedProduct.price}
-                    </h3>
-                    {selectedProduct.original_price && (
-                      <span style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: '1.1rem' }}>
-                        ₹{selectedProduct.original_price}
-                      </span>
-                    )}
-                  </div>
-                  {selectedProduct.discount_text && (
-                    <span style={{ display: 'inline-block', marginTop: '6px', background: '#ef4444', color: 'white', padding: '3px 8px', fontSize: '0.75rem', borderRadius: '6px', fontWeight: 800 }}>
-                      {selectedProduct.discount_text}
-                    </span>
-                  )}
-                </div>
-                
-                <div style={{ marginBottom: '18px' }}>
-                  <h4 style={{ margin: '0 0 6px', color: '#1e293b', fontSize: '0.95rem' }}>About this item</h4>
-                  <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: '#64748b', margin: 0 }}>
-                    {selectedProduct.description || "Authentic high-demand wholesale merchandise supplied directly by Dinesh Agencies. Genuine factory batch with retail markup support."}
-                  </p>
-                </div>
+            
+            <div className="photo-lightbox-img-frame">
+              <img 
+                src={selectedProduct.image_url || 'https://via.placeholder.com/300?text=Product'} 
+                alt={selectedProduct.name} 
+              />
+            </div>
 
-                <div style={{ marginTop: 'auto' }}>
-                  {(() => {
-                    const qty = getCartQuantity(selectedProduct.id);
-                    return qty > 0 ? (
-                      <div className="card-quantity-control" style={{ height: '46px' }}>
-                        <button onClick={() => decreaseQuantity(selectedProduct.id)} className="card-qty-btn">-</button>
-                        <span className="card-qty-val">{qty}</span>
-                        <button onClick={() => addToCart(selectedProduct)} className="card-qty-btn">+</button>
-                      </div>
-                    ) : Number(selectedProduct.stock) === 0 ? (
-                      <button className="out-of-stock-btn" disabled style={{ width: '100%', height: '46px' }}>
-                        Out of Stock
-                      </button>
-                    ) : (
-                      <button 
-                        className="add-to-cart-btn" 
-                        onClick={() => addToCart(selectedProduct)} 
-                        style={{ width: '100%', height: '46px', background: '#fc8019', fontSize: '1rem' }}
-                      >
-                        <ShoppingCart size={20} /> Add to Wholesale Cart
-                      </button>
-                    );
-                  })()}
-                </div>
+            <div className="photo-lightbox-details">
+              <span className="photo-lightbox-category">
+                {selectedProduct.category_name}
+              </span>
+              <h3 className="photo-lightbox-title">
+                {selectedProduct.name}
+              </h3>
+              <p className="photo-lightbox-desc">
+                {selectedProduct.description || "Authentic FMCG stock distributed directly by Dinesh Agencies with direct manufacturer supply and wholesale pricing."}
+              </p>
+
+              <div className="photo-lightbox-actions">
+                <a 
+                  href={`https://wa.me/919566714372?text=${encodeURIComponent(`Hello Dinesh Agencies, I want to inquire about wholesale orders for: ${selectedProduct.name}`)}`}
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="photo-lightbox-wa-btn"
+                >
+                  💬 Inquire on WhatsApp
+                </a>
+                <button 
+                  type="button" 
+                  className="photo-lightbox-done-btn"
+                  onClick={() => setSelectedProduct(null)}
+                >
+                  Close Preview
+                </button>
               </div>
             </div>
           </div>
