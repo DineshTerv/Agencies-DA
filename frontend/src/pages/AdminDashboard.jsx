@@ -813,7 +813,20 @@ const AdminDashboard = () => {
                 <div style={{textAlign: 'center', padding: '3rem', color: 'var(--text-muted)'}}>
                   <ShoppingBag size={48} style={{opacity: 0.3, marginBottom: '1rem'}} />
                   <h3>No Orders Found</h3>
-                  <p>When customers place orders from the Cart, they will appear right here!</p>
+                  {orders.length > 0 ? (
+                    <div>
+                      <p>No orders match the current filter "<strong>{orderStatusFilter}</strong>"{orderSearch ? ` or search "${orderSearch}"` : ''}. There are {orders.length} total orders in the database.</p>
+                      <button 
+                        type="button"
+                        onClick={() => { setOrderStatusFilter('ALL'); setOrderSearch(''); }} 
+                        style={{ marginTop: '12px', padding: '8px 18px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        Show All Orders ({orders.length})
+                      </button>
+                    </div>
+                  ) : (
+                    <p>When customers place orders from the Cart, they will appear right here!</p>
+                  )}
                 </div>
               ) : (
                 <table className="admin-table">

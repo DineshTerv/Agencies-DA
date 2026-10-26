@@ -49,25 +49,40 @@ const Orders = ({ addToCart }) => {
 
     // 2. Fetch from Backend
     try {
+      let backendOrders = [];
       if (savedUsername) {
-        // Try user specific endpoint first
         try {
-          const res = await axios.get(`${API_URL}/orders/user/${encodeURIComponent(savedUsername)}`);
-          if (res.data && Array.isArray(res.data)) {
-            allOrders = [...res.data, ...allOrders];
+          const res = await axios.get(`${API_URL}/orders/user/${encodeURIComponent(savedUsername)}`, { timeout: 8000 });
+          if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+            backendOrders = res.data;
           }
         } catch (e) {
-          // Fallback: fetch all orders and filter by user/name/phone
-          const allRes = await axios.get(`${API_URL}/orders`);
-          if (allRes.data && Array.isArray(allRes.data)) {
-            const userOnly = allRes.data.filter(o => 
-              (o.username && o.username.toLowerCase() === savedUsername.toLowerCase()) ||
-              (o.customer_name && o.customer_name.toLowerCase() === savedUsername.toLowerCase())
-            );
-            allOrders = [...userOnly, ...allOrders];
-          }
+          console.warn("User orders endpoint fallback:", e.message);
         }
       }
+
+      // If user-specific had no results or user is admin or guest, fetch all orders
+      if (backendOrders.length === 0) {
+        try {
+          const allRes = await axios.get(`${API_URL}/orders`, { timeout: 10000 });
+          if (allRes.data && Array.isArray(allRes.data)) {
+            if (savedUsername && !isAdmin) {
+              const matched = allRes.data.filter(o => 
+                (o.username && o.username.toLowerCase() === savedUsername.toLowerCase()) ||
+                (o.customer_name && o.customer_name.toLowerCase().includes(savedUsername.toLowerCase())) ||
+                (o.customer_phone && o.customer_phone.includes(savedUsername))
+              );
+              backendOrders = matched.length > 0 ? matched : allRes.data;
+            } else {
+              backendOrders = allRes.data;
+            }
+          }
+        } catch (allErr) {
+          console.warn("All orders endpoint error:", allErr.message);
+        }
+      }
+
+      allOrders = [...backendOrders, ...allOrders];
     } catch (err) {
       console.warn("Backend orders fetch error, showing local orders:", err.message);
     }

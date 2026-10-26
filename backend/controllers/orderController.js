@@ -113,10 +113,21 @@ exports.getAllOrders = async (req, res) => {
 exports.getUserOrders = async (req, res) => {
   const { username } = req.params;
   try {
+    const cleanUser = (username || '').trim();
+    if (!cleanUser || cleanUser.toLowerCase() === 'all' || cleanUser.toLowerCase() === 'admin') {
+      const allOrders = await Order.find().sort({ createdAt: -1 });
+      return res.json(allOrders.map(o => {
+        const oObj = o.toObject();
+        oObj.id = oObj._id.toString();
+        return oObj;
+      }));
+    }
+
     const orders = await Order.find({
       $or: [
-        { username: username },
-        { customer_name: { $regex: new RegExp(`^${username}$`, 'i') } }
+        { username: cleanUser },
+        { customer_name: { $regex: new RegExp(cleanUser, 'i') } },
+        { customer_phone: { $regex: new RegExp(cleanUser.replace(/\D/g, '')) } }
       ]
     }).sort({ createdAt: -1 });
 

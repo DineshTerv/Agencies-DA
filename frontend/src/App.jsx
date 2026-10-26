@@ -57,8 +57,8 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      {/* ── TOP HEADER WITH ALL PORTAL & PAGE LINKS ── */}
-      {location.pathname !== '/login' && (
+      {/* ── TOP HEADER WITH ALL PORTAL & PAGE LINKS (Rendered on subpages) ── */}
+      {location.pathname !== '/login' && location.pathname !== '/' && (
       <header className="glass main-header">
         <div className="container header-content">
           {/* Logo */}
@@ -302,8 +302,8 @@ function AppContent() {
         </Routes>
       </main>
 
-      {/* ── FOOTER NAVIGATION BAR ── */}
-      {location.pathname !== '/login' && (
+      {/* ── FOOTER NAVIGATION BAR (Rendered on subpages) ── */}
+      {location.pathname !== '/login' && location.pathname !== '/' && (
       <footer className="main-footer glass">
         <div className="container footer-content" style={{ flexDirection: 'column', textAlign: 'center', justifyContent: 'center' }}>
           <div className="footer-brand" style={{ textAlign: 'center', width: '100%' }}>
