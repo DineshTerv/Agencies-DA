@@ -68,6 +68,7 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
   const savedUsername = localStorage.getItem('username');
   const userRole = localStorage.getItem('userRole') || (localStorage.getItem('adminToken') ? 'admin' : (localStorage.getItem('workerToken') ? 'worker' : 'customer'));
   const location = useLocation();
+  const cartCount = (cartItems || []).reduce((acc, item) => acc + (item.quantity || 0), 0);
 
   // Auto-open sign in if visited with ?login=true or ?signin=true
   useEffect(() => {
