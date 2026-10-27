@@ -359,7 +359,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (!adminToken) {
-      navigate('/login');
+      navigate('/admin/login');
       return;
     }
     loadOrders();
@@ -373,7 +373,7 @@ const AdminDashboard = () => {
 
   const handleLogout = () => {
     ['authToken', 'adminToken', 'workerToken', 'username', 'workerId', 'userRole'].forEach(key => localStorage.removeItem(key));
-    navigate('/login');
+    navigate('/');
   };
 
   const handleOpenWhatsAppModal = (order, customStatus = null) => {

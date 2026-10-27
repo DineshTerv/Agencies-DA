@@ -106,7 +106,7 @@ export default function ProfileModal({ isOpen, onClose, username }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button onClick={() => {
             ['authToken', 'adminToken', 'workerToken', 'username', 'workerId', 'userRole'].forEach(key => localStorage.removeItem(key));
-            window.location.href = '/login';
+            window.location.href = '/';
           }} style={{ padding: '10px 15px', background: '#ffeaa7', color: '#d63031', border: '1px solid #d63031', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
             Logout
           </button>

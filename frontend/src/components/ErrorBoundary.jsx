@@ -61,7 +61,7 @@ class ErrorBoundary extends React.Component {
               </button>
               <button 
                 onClick={() => {
-                  window.location.href = '/login';
+                  window.location.href = '/';
                 }}
                 style={{
                   background: '#f1f2f6',

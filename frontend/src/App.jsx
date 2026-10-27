@@ -10,6 +10,8 @@ import Orders from './pages/Orders';
 import AuthPage from './pages/AuthPage';
 import AdminDashboard from './pages/AdminDashboard';
 import WorkerDashboard from './pages/WorkerDashboard';
+import AdminLogin from './pages/AdminLogin';
+import WorkerLogin from './pages/WorkerLogin';
 import ProfileModal from './components/ProfileModal';
 
 function AppContent() {
@@ -41,7 +43,7 @@ function AppContent() {
     const isLoggedIn = localStorage.getItem('authToken') || localStorage.getItem('adminToken') || localStorage.getItem('workerToken');
     if (!isLoggedIn) {
       alert("Please login or create an account to place orders.");
-      window.location.href = '/login';
+      window.location.href = '/?login=true';
       return;
     }
     setCartItems(prev => {
@@ -166,7 +168,7 @@ function AppContent() {
                         <span style={{ fontSize: '18px', marginRight: '5px' }}>{avatarEmoji}</span> Profile ({displayName})
                       </div>
                     ) : (
-                      <Link to="/login" className="nav-link-item user-nav"><User size={17} /> User Page / Login</Link>
+                      <Link to="/?login=true" className="nav-link-item user-nav"><User size={17} /> User Page / Login</Link>
                     )}
                   </>
                 );
@@ -219,7 +221,7 @@ function AppContent() {
                           <div className="dropdown-item" onClick={() => {
                               setIsProfileMenuOpen(false);
                               ['authToken', 'adminToken', 'workerToken', 'username', 'workerId', 'userRole'].forEach(key => localStorage.removeItem(key));
-                              window.location.href = '/login';
+                              window.location.href = '/';
                           }}>
                             <LogIn size={16} /> Logout
                           </div>
@@ -239,10 +241,10 @@ function AppContent() {
                         <div className="profile-dropdown-menu">
                           <div className="dropdown-header">
                             <span>New customer?</span>
-                            <Link to="/login" className="signup-link" onClick={() => setIsProfileMenuOpen(false)}>Sign Up</Link>
+                            <Link to="/?login=true" className="signup-link" onClick={() => setIsProfileMenuOpen(false)}>Sign Up</Link>
                           </div>
-                          <Link to="/login" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
-                            <User size={16} /> My Profile
+                          <Link to="/?login=true" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                            <User size={16} /> Sign In / Account
                           </Link>
                           <Link to="/products" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
                             <Package size={16} /> Browse Products
@@ -250,7 +252,7 @@ function AppContent() {
                           <Link to="/orders" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
                             <Package size={16} /> Orders
                           </Link>
-                          <Link to="/login" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                          <Link to="/products" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
                             <Heart size={16} /> Wishlist
                           </Link>
                         </div>
@@ -289,22 +291,22 @@ function AppContent() {
           <Route path="/cart" element={
             localStorage.getItem('authToken') || localStorage.getItem('adminToken') || localStorage.getItem('workerToken')
               ? <Cart cartItems={cartItems} setCartItems={setCartItems} />
-              : <Navigate to="/login" replace />
+              : <Navigate to="/?login=true" replace />
           } />
           <Route path="/orders" element={
             localStorage.getItem('authToken') || localStorage.getItem('adminToken') || localStorage.getItem('workerToken')
               ? <Orders addToCart={addToCart} />
-              : <Navigate to="/login" replace />
+              : <Navigate to="/?login=true" replace />
           } />
 
           {/* User / Customer Login & ID Creation */}
-          <Route path="/login" element={<AuthPage />} />
+          <Route path="/login" element={<Navigate to="/" replace />} />
 
           {/* Direct portal redirects */}
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/worker" element={<Navigate to="/worker/dashboard" replace />} />
-          <Route path="/worker/login" element={<Navigate to="/login" replace />} />
+          <Route path="/worker/login" element={<WorkerLogin />} />
 
           {/* Admin Portals & Dedicated Sub-Pages */}
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -341,7 +343,7 @@ function AppContent() {
               <Link to="/admin/products" className="footer-pill" style={{background: 'rgba(108, 92, 231, 0.15)', color: '#6c5ce7'}}>🏷️ Products</Link>
               <Link to="/admin/workers" className="footer-pill worker-pill">🏭 Workers</Link>
               <Link to="/" className="footer-pill" style={{background: 'rgba(46, 213, 115, 0.15)', color: '#2ed573'}}>🏪 Store View</Link>
-              <Link to="/login" className="footer-pill user-pill">🛍️ User / Customer Login</Link>
+              <Link to="/?login=true" className="footer-pill user-pill">🛍️ User / Customer Login</Link>
             </div>
           )}
         </div>

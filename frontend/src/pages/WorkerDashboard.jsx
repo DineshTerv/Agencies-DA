@@ -40,7 +40,7 @@ const WorkerDashboard = () => {
 
   useEffect(() => {
     if (!localStorage.getItem('workerToken')) {
-      navigate('/login');
+      navigate('/worker/login');
     }
 
     const fetchData = async () => {
@@ -84,7 +84,7 @@ const WorkerDashboard = () => {
 
   const handleLogout = () => {
     ['authToken', 'adminToken', 'workerToken', 'username', 'workerId', 'userRole'].forEach(key => localStorage.removeItem(key));
-    navigate('/login');
+    navigate('/');
   };
 
   const addToCart = (product) => {

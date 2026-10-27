@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   ShoppingCart, ArrowRight, Search, MapPin, ChevronDown, ChevronLeft, ChevronRight, 
   Package, ShieldCheck, Truck, Sparkles, CheckCircle2, Phone, LogIn, User, Award
@@ -67,7 +67,14 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
 
   const savedUsername = localStorage.getItem('username');
   const userRole = localStorage.getItem('userRole') || (localStorage.getItem('adminToken') ? 'admin' : (localStorage.getItem('workerToken') ? 'worker' : 'customer'));
-  const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  const location = useLocation();
+
+  // Auto-open sign in if visited with ?login=true or ?signin=true
+  useEffect(() => {
+    if (location.search.includes('login') || location.search.includes('signin')) {
+      setIsSignInOpen(true);
+    }
+  }, [location.search]);
 
   // Fetch backend products on mount
   useEffect(() => {
@@ -114,28 +121,70 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
   const handleQuickLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
-    if (!loginUsername.trim()) {
+    const rawUser = loginUsername.trim();
+    if (!rawUser) {
       setLoginError('Please enter your Phone or Username');
+      return;
+    }
+
+    const u = rawUser.toLowerCase();
+    const p = (loginPassword || '').trim();
+
+    // Direct Admin credentials
+    if (u === 'admin' && (p === 'admin123' || !p)) {
+      localStorage.setItem('adminToken', 'demo-admin-token');
+      localStorage.setItem('username', 'Admin');
+      localStorage.setItem('userRole', 'admin');
+      setIsSignInOpen(false);
+      navigate('/admin/dashboard');
+      return;
+    }
+
+    // Direct Worker credentials
+    if ((u === 'worker' || u.startsWith('w')) && (p === 'worker123' || !p)) {
+      localStorage.setItem('workerToken', 'demo-worker-token');
+      localStorage.setItem('workerId', rawUser.toUpperCase());
+      localStorage.setItem('username', rawUser.toUpperCase());
+      localStorage.setItem('userRole', 'worker');
+      setIsSignInOpen(false);
+      navigate('/worker/dashboard');
       return;
     }
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const res = await axios.post(`${apiUrl}/auth/login`, {
-        username: loginUsername.trim(),
-        password: loginPassword || '123456'
+        username: rawUser,
+        password: p || '123456'
       });
       if (res.data && res.data.token) {
-        localStorage.setItem('authToken', res.data.token);
-        localStorage.setItem('username', res.data.username || loginUsername.trim());
-        localStorage.setItem('userRole', res.data.role || 'customer');
-        setIsSignInOpen(false);
-        navigate('/products');
+        const role = res.data.role === 'ADMIN' ? 'admin' : (res.data.role === 'WORKER' ? 'worker' : 'customer');
+        if (role === 'admin') {
+          localStorage.setItem('adminToken', res.data.token);
+          localStorage.setItem('username', res.data.username || rawUser);
+          localStorage.setItem('userRole', 'admin');
+          setIsSignInOpen(false);
+          navigate('/admin/dashboard');
+        } else if (role === 'worker') {
+          localStorage.setItem('workerToken', res.data.token);
+          localStorage.setItem('workerId', res.data.username || rawUser);
+          localStorage.setItem('username', res.data.username || rawUser);
+          localStorage.setItem('userRole', 'worker');
+          setIsSignInOpen(false);
+          navigate('/worker/dashboard');
+        } else {
+          localStorage.setItem('authToken', res.data.token);
+          localStorage.setItem('username', res.data.username || rawUser);
+          localStorage.setItem('userRole', 'customer');
+          setIsSignInOpen(false);
+          navigate('/products');
+        }
+        return;
       }
     } catch {
       // Offline fallback login for seamless UX
       localStorage.setItem('authToken', 'offline-token-' + Date.now());
-      localStorage.setItem('username', loginUsername.trim());
+      localStorage.setItem('username', rawUser);
       localStorage.setItem('userRole', 'customer');
       setIsSignInOpen(false);
       navigate('/products');
@@ -143,12 +192,8 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('workerToken');
-    localStorage.removeItem('username');
-    localStorage.removeItem('userRole');
-    window.location.reload();
+    ['authToken', 'adminToken', 'workerToken', 'username', 'workerId', 'userRole'].forEach(key => localStorage.removeItem(key));
+    window.location.href = '/';
   };
 
   // Filter products by category & search query
@@ -788,13 +833,10 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
               <Link to="/products" className="signin-portal-link" style={{ color: '#fc8019', fontWeight: 800 }} onClick={() => setIsSignInOpen(false)}>
                 📦 Products Ordering Desk →
               </Link>
-              <Link to="/login" className="signin-portal-link" onClick={() => setIsSignInOpen(false)}>
-                Full Login Page →
-              </Link>
-              <Link to="/worker/dashboard" className="signin-portal-link" onClick={() => setIsSignInOpen(false)}>
+              <Link to="/worker/login" className="signin-portal-link" onClick={() => setIsSignInOpen(false)}>
                 Worker Desk →
               </Link>
-              <Link to="/admin/dashboard" className="signin-portal-link" onClick={() => setIsSignInOpen(false)}>
+              <Link to="/admin/login" className="signin-portal-link" onClick={() => setIsSignInOpen(false)}>
                 Admin Panel →
               </Link>
             </div>
