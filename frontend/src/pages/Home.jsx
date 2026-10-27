@@ -130,7 +130,7 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
         localStorage.setItem('username', res.data.username || loginUsername.trim());
         localStorage.setItem('userRole', res.data.role || 'customer');
         setIsSignInOpen(false);
-        window.location.reload();
+        navigate('/products');
       }
     } catch {
       // Offline fallback login for seamless UX
@@ -138,7 +138,7 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
       localStorage.setItem('username', loginUsername.trim());
       localStorage.setItem('userRole', 'customer');
       setIsSignInOpen(false);
-      window.location.reload();
+      navigate('/products');
     }
   };
 
@@ -214,26 +214,36 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
                 Get Rate List ↗
               </a>
 
-              {/* Sign In / User Profile */}
+              {/* Sign In / User Profile / Products */}
               {savedUsername ? (
-                <div className="swiggy-user-pill">
-                  <User size={15} />
-                  <span>{savedUsername}</span>
-                  <button 
-                    onClick={handleLogout} 
-                    style={{ background: 'transparent', border: 'none', color: '#ff9f43', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.78rem' }}
-                  >
-                    Logout
-                  </button>
-                </div>
+                <>
+                  <Link to="/products" className="swiggy-app-btn" style={{ background: '#fc8019', color: '#ffffff', border: 'none', fontWeight: 800, textDecoration: 'none' }}>
+                    <Package size={15} /> Order Products
+                  </Link>
+                  <div className="swiggy-user-pill">
+                    <User size={15} />
+                    <span>{savedUsername}</span>
+                    <button 
+                      onClick={handleLogout} 
+                      style={{ background: 'transparent', border: 'none', color: '#ff9f43', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.78rem' }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </>
               ) : (
-                <button 
-                  type="button" 
-                  className="swiggy-signin-btn"
-                  onClick={() => setIsSignInOpen(true)}
-                >
-                  <LogIn size={16} /> Sign In
-                </button>
+                <>
+                  <Link to="/products" className="swiggy-app-btn" style={{ background: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.3)', fontWeight: 700, textDecoration: 'none' }}>
+                    <Package size={15} /> Products Desk
+                  </Link>
+                  <button 
+                    type="button" 
+                    className="swiggy-signin-btn"
+                    onClick={() => setIsSignInOpen(true)}
+                  >
+                    <LogIn size={16} /> Sign In
+                  </button>
+                </>
               )}
 
               {/* Cart Button */}
@@ -409,10 +419,10 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
               </div>
 
               <div className="doll-action-row">
-                <button type="button" className="doll-explore-btn" onClick={scrollToCatalog}>
-                  <span>Browse Products ({products.length} SKUs)</span>
+                <Link to="/products" className="doll-explore-btn" style={{ textDecoration: 'none' }}>
+                  <span>Browse & Order Products ({products.length} SKUs)</span>
                   <ArrowRight size={17} />
-                </button>
+                </Link>
                 <a 
                   href="https://wa.me/919566714372?text=Hello%20Arjun,%20I%20want%20to%20order%20wholesale%20stock%20for%20my%20shop." 
                   target="_blank" 
@@ -490,15 +500,24 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
                     Showing authentic stock items from Dinesh Agencies wholesale inventory ({filteredProducts.length} items)
                   </p>
                 </div>
-                {activeCategory !== 'All' && (
-                  <button 
-                    type="button" 
-                    className="clear-cat-filter-btn" 
-                    onClick={() => setActiveCategory('All')}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {activeCategory !== 'All' && (
+                    <button 
+                      type="button" 
+                      className="clear-cat-filter-btn" 
+                      onClick={() => setActiveCategory('All')}
+                    >
+                      View All Products
+                    </button>
+                  )}
+                  <Link 
+                    to={activeCategory === 'All' ? '/products' : `/products?category=${activeCategory}`} 
+                    className="clear-cat-filter-btn"
+                    style={{ background: '#fc8019', color: '#ffffff', borderColor: '#fc8019', textDecoration: 'none' }}
                   >
-                    View All Products
-                  </button>
-                )}
+                    Go to Ordering Desk →
+                  </Link>
+                </div>
               </div>
             </div>
 
@@ -766,6 +785,9 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
             </form>
 
             <div className="signin-portal-links-box">
+              <Link to="/products" className="signin-portal-link" style={{ color: '#fc8019', fontWeight: 800 }} onClick={() => setIsSignInOpen(false)}>
+                📦 Products Ordering Desk →
+              </Link>
               <Link to="/login" className="signin-portal-link" onClick={() => setIsSignInOpen(false)}>
                 Full Login Page →
               </Link>
@@ -819,6 +841,14 @@ export default function Home({ addToCart, cartItems = [], setCartItems }) {
               </p>
 
               <div className="photo-lightbox-actions">
+                <Link 
+                  to="/products"
+                  className="photo-lightbox-done-btn"
+                  style={{ background: '#fc8019', color: '#ffffff', textDecoration: 'none', fontWeight: 800 }}
+                  onClick={() => setSelectedProduct(null)}
+                >
+                  🛒 Order on Products Desk
+                </Link>
                 <a 
                   href={`https://wa.me/919566714372?text=${encodeURIComponent(`Hello Dinesh Agencies, I want to inquire about wholesale orders for: ${selectedProduct.name}`)}`}
                   target="_blank" 

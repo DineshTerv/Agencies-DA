@@ -4,6 +4,7 @@ import { ShoppingCart, X, Phone, User, Shield, Briefcase, Store, LogIn, External
 import './App.css';
 
 import Home from './pages/Home';
+import Products from './pages/Products';
 import Cart from './pages/Cart';
 import Orders from './pages/Orders';
 import AuthPage from './pages/AuthPage';
@@ -24,6 +25,7 @@ function AppContent() {
   React.useEffect(() => {
     const path = location.pathname;
     if (path === '/login') document.title = 'DA - Sign In & Portals';
+    else if (path === '/products') document.title = 'DA - Wholesale Products & Ordering';
     else if (path.includes('/admin/orders')) document.title = 'DA - Admin Orders';
     else if (path.includes('/admin/products')) document.title = 'DA - Admin Products';
     else if (path.includes('/admin/workers')) document.title = 'DA - Admin Workers';
@@ -169,77 +171,90 @@ function AppContent() {
                   </>
                 );
               }
-              
-              return savedUsername ? (
-                <div className="profile-dropdown-container">
-                  <div 
-                    className="nav-link-item user-nav" 
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                    onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                  >
-                    <span style={{ fontSize: '18px', marginRight: '5px' }}>{avatarEmoji}</span> {displayName} <ChevronDown size={14} style={{marginLeft: '4px', transform: isProfileMenuOpen ? 'rotate(180deg)' : 'none', transition: '0.2s'}} />
-                  </div>
-                  {isProfileMenuOpen && (
-                    <div className="profile-dropdown-menu">
-                      <div className="dropdown-item" onClick={() => { setIsProfileMenuOpen(false); setIsProfileModalOpen(true); }}>
-                        <User size={16} /> My Profile
-                      </div>
-                      {localStorage.getItem('userRole') === 'admin' && (
-                        <>
-                          <Link to="/admin/dashboard" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
-                            <Shield size={16} /> Admin Overview
-                          </Link>
-                          <Link to="/admin/orders" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
-                            <ShoppingBag size={16} /> Admin Orders
-                          </Link>
-                        </>
-                      )}
-                      {localStorage.getItem('userRole') === 'worker' && (
-                        <Link to="/worker/dashboard" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
-                          <Briefcase size={16} /> Worker Dashboard
-                        </Link>
-                      )}
-                      <Link 
-                        to={localStorage.getItem('userRole') === 'admin' ? "/admin/orders" : "/orders"} 
-                        className="dropdown-item" 
-                        onClick={() => setIsProfileMenuOpen(false)}
+
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Link to="/" className={`nav-link-item ${location.pathname === '/' ? 'active' : ''}`}><Store size={17} /> Home</Link>
+                  <Link to="/products" className={`nav-link-item ${location.pathname === '/products' ? 'active' : ''}`} style={{ fontWeight: 700, color: '#fc8019' }}><Package size={17} /> Order Products</Link>
+
+                  {savedUsername ? (
+                    <div className="profile-dropdown-container">
+                      <div 
+                        className="nav-link-item user-nav" 
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                       >
-                        <Package size={16} /> Orders
-                      </Link>
-                      <div className="dropdown-item" onClick={() => {
-                          setIsProfileMenuOpen(false);
-                          ['authToken', 'adminToken', 'workerToken', 'username', 'workerId', 'userRole'].forEach(key => localStorage.removeItem(key));
-                          window.location.href = '/login';
-                      }}>
-                        <LogIn size={16} /> Logout
+                        <span style={{ fontSize: '18px', marginRight: '5px' }}>{avatarEmoji}</span> {displayName} <ChevronDown size={14} style={{marginLeft: '4px', transform: isProfileMenuOpen ? 'rotate(180deg)' : 'none', transition: '0.2s'}} />
                       </div>
+                      {isProfileMenuOpen && (
+                        <div className="profile-dropdown-menu">
+                          <div className="dropdown-item" onClick={() => { setIsProfileMenuOpen(false); setIsProfileModalOpen(true); }}>
+                            <User size={16} /> My Profile
+                          </div>
+                          <Link to="/products" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                            <Package size={16} /> Order Catalog
+                          </Link>
+                          {localStorage.getItem('userRole') === 'admin' && (
+                            <>
+                              <Link to="/admin/dashboard" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                                <Shield size={16} /> Admin Overview
+                              </Link>
+                              <Link to="/admin/orders" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                                <ShoppingBag size={16} /> Admin Orders
+                              </Link>
+                            </>
+                          )}
+                          {localStorage.getItem('userRole') === 'worker' && (
+                            <Link to="/worker/dashboard" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                              <Briefcase size={16} /> Worker Dashboard
+                            </Link>
+                          )}
+                          <Link 
+                            to={localStorage.getItem('userRole') === 'admin' ? "/admin/orders" : "/orders"} 
+                            className="dropdown-item" 
+                            onClick={() => setIsProfileMenuOpen(false)}
+                          >
+                            <Package size={16} /> Orders
+                          </Link>
+                          <div className="dropdown-item" onClick={() => {
+                              setIsProfileMenuOpen(false);
+                              ['authToken', 'adminToken', 'workerToken', 'username', 'workerId', 'userRole'].forEach(key => localStorage.removeItem(key));
+                              window.location.href = '/login';
+                          }}>
+                            <LogIn size={16} /> Logout
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="profile-dropdown-container">
-                  <div 
-                    className="nav-link-item user-nav" 
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                    onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                  >
-                    <User size={17} style={{marginRight: '5px'}}/> Login <ChevronDown size={14} style={{marginLeft: '4px', transform: isProfileMenuOpen ? 'rotate(180deg)' : 'none', transition: '0.2s'}} />
-                  </div>
-                  {isProfileMenuOpen && (
-                    <div className="profile-dropdown-menu">
-                      <div className="dropdown-header">
-                        <span>New customer?</span>
-                        <Link to="/login" className="signup-link" onClick={() => setIsProfileMenuOpen(false)}>Sign Up</Link>
+                  ) : (
+                    <div className="profile-dropdown-container">
+                      <div 
+                        className="nav-link-item user-nav" 
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                      >
+                        <User size={17} style={{marginRight: '5px'}}/> Login <ChevronDown size={14} style={{marginLeft: '4px', transform: isProfileMenuOpen ? 'rotate(180deg)' : 'none', transition: '0.2s'}} />
                       </div>
-                      <Link to="/login" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
-                        <User size={16} /> My Profile
-                      </Link>
-                      <Link to="/orders" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
-                        <Package size={16} /> Orders
-                      </Link>
-                      <Link to="/login" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
-                        <Heart size={16} /> Wishlist
-                      </Link>
+                      {isProfileMenuOpen && (
+                        <div className="profile-dropdown-menu">
+                          <div className="dropdown-header">
+                            <span>New customer?</span>
+                            <Link to="/login" className="signup-link" onClick={() => setIsProfileMenuOpen(false)}>Sign Up</Link>
+                          </div>
+                          <Link to="/login" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                            <User size={16} /> My Profile
+                          </Link>
+                          <Link to="/products" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                            <Package size={16} /> Browse Products
+                          </Link>
+                          <Link to="/orders" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                            <Package size={16} /> Orders
+                          </Link>
+                          <Link to="/login" className="dropdown-item" onClick={() => setIsProfileMenuOpen(false)}>
+                            <Heart size={16} /> Wishlist
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -266,6 +281,11 @@ function AppContent() {
           <Route path="/" element={
             <Home addToCart={addToCart} searchQuery={searchQuery} cartItems={cartItems} setCartItems={setCartItems} />
           } />
+          <Route path="/products" element={
+            <Products addToCart={addToCart} cartItems={cartItems} setCartItems={setCartItems} />
+          } />
+          <Route path="/catalog" element={<Navigate to="/products" replace />} />
+          <Route path="/order" element={<Navigate to="/products" replace />} />
           <Route path="/cart" element={
             localStorage.getItem('authToken') || localStorage.getItem('adminToken') || localStorage.getItem('workerToken')
               ? <Cart cartItems={cartItems} setCartItems={setCartItems} />

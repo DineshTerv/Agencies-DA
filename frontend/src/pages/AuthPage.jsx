@@ -216,7 +216,7 @@ export default function AuthPage() {
           localStorage.setItem('authToken', token);
           localStorage.setItem('username', username);
           localStorage.setItem('userRole', 'user');
-          navigate('/');
+          navigate('/products');
         }
       }
     } catch (err) {
