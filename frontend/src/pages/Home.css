@@ -626,7 +626,8 @@
 
 .carousel-controls {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.6rem;
+  align-items: center;
 }
 
 .carousel-arrow-btn {
@@ -635,17 +636,39 @@
   border-radius: 50%;
   background: #e2e8f0;
   border: none;
-  color: #334155;
+  color: #02060c;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
 }
 
 .carousel-arrow-btn:hover {
   background: #cbd5e1;
-  color: #02060c;
+  color: #000000;
+  transform: scale(1.08);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.carousel-arrow-btn:active {
+  transform: scale(0.94);
+}
+
+.carousel-arrow-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke: #0f172a;
+  stroke-width: 2.5px;
+  display: block;
+  pointer-events: none;
+  transition: stroke 0.2s;
+}
+
+.carousel-arrow-btn:hover svg {
+  stroke: #000000;
 }
 
 .circular-categories-track {
