@@ -22,12 +22,38 @@ const CATEGORIES = [
   { id: 'Snack', label: 'Snacks & Sticks', icon: '🍪' }
 ];
 
+// Helper to guarantee every stock item has wholesale discount badge, MRP, and retail margin
+const ensureDiscount = (product) => {
+  const price = Number(product.price) || 10;
+  let original_price = Number(product.original_price);
+  let discount_text = product.discount_text;
+
+  if (!original_price || original_price <= price) {
+    const markupFactor = price <= 10 ? 1.25 : (price <= 50 ? 1.22 : (price <= 150 ? 1.20 : 1.18));
+    original_price = Math.round(price * markupFactor);
+    if (original_price <= price) original_price = price + 2;
+  }
+
+  if (!discount_text) {
+    const pct = Math.round(((original_price - price) / original_price) * 100);
+    discount_text = `${pct}% OFF`;
+  }
+
+  return {
+    ...product,
+    price,
+    original_price,
+    discount_text,
+    margin: original_price - price
+  };
+};
+
 export default function Products({ addToCart, cartItems = [], setCartItems }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = searchParams.get('category') || 'All';
 
-  const [products, setProducts] = useState(PRODUCTS_DATA);
+  const [products, setProducts] = useState(() => PRODUCTS_DATA.map(ensureDiscount));
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
@@ -46,11 +72,11 @@ export default function Products({ addToCart, cartItems = [], setCartItems }) {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         const res = await axios.get(`${apiUrl}/products`);
         if (res.data && res.data.length > 0) {
-          setProducts(res.data);
+          setProducts(res.data.map(ensureDiscount));
         }
       } catch (err) {
         console.warn("Backend products fetch failed, using local product catalog:", err.message);
-        setProducts(PRODUCTS_DATA);
+        setProducts(PRODUCTS_DATA.map(ensureDiscount));
       } finally {
         setLoading(false);
       }

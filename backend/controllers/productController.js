@@ -6,6 +6,14 @@ exports.getAllProducts = async (req, res) => {
     const formattedProducts = products.map(p => {
       const pObj = p.toObject();
       pObj.id = p._id.toString(); // Map _id to id for frontend compatibility
+      if (!pObj.original_price || pObj.original_price <= pObj.price) {
+        const factor = pObj.price <= 50 ? 1.25 : 1.20;
+        pObj.original_price = Math.round(pObj.price * factor);
+      }
+      if (!pObj.discount_text) {
+        const pct = Math.round(((pObj.original_price - pObj.price) / pObj.original_price) * 100);
+        pObj.discount_text = `${pct}% OFF`;
+      }
       return pObj;
     });
     res.json(formattedProducts);
