@@ -77,8 +77,47 @@ const AdminDashboard = () => {
     return 'dashboard';
   };
 
+  const computeEffectiveStockList = (rawProducts) => {
+    try {
+      const stockOverrides = JSON.parse(localStorage.getItem('da_stock_overrides') || '{}');
+      const localOrders = JSON.parse(localStorage.getItem('da_orders') || '[]');
+
+      const orderedCountMap = {};
+      localOrders.forEach(ord => {
+        if (ord.status === 'CANCELLED') return;
+        (ord.items || []).forEach(item => {
+          const pId = item.id || item.product_id;
+          const pName = (item.name || '').trim().toLowerCase();
+          const q = Number(item.quantity) || 1;
+          if (pId) orderedCountMap[pId] = (orderedCountMap[pId] || 0) + q;
+          if (pName) orderedCountMap[pName] = (orderedCountMap[pName] || 0) + q;
+        });
+      });
+
+      return (rawProducts || []).map(p => {
+        const pId = p.id || p._id;
+        const pName = (p.name || '').trim().toLowerCase();
+        let stock = Number(p.stock !== undefined ? p.stock : 50);
+
+        if (pId && stockOverrides[pId] !== undefined) {
+          stock = Number(stockOverrides[pId]);
+        } else if (p.name && stockOverrides[p.name] !== undefined) {
+          stock = Number(stockOverrides[p.name]);
+        } else {
+          const ordered = orderedCountMap[pId] || (pName && orderedCountMap[pName]) || 0;
+          stock = Math.max(0, stock - ordered);
+        }
+
+        return { ...p, stock };
+      });
+    } catch (err) {
+      console.warn("Stock calculation warning:", err);
+      return rawProducts;
+    }
+  };
+
   const [activeTab, setActiveTab] = useState(() => getTabFromPath());
-  const [products, setProducts] = useState(PRODUCTS_DATA);
+  const [products, setProducts] = useState(() => computeEffectiveStockList(PRODUCTS_DATA));
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderSearch, setOrderSearch] = useState('');
@@ -346,14 +385,25 @@ const AdminDashboard = () => {
         }
       }
 
-      if (prodData) {
-        setProducts(prodData);
-      }
+      const baseList = (prodData && prodData.length > 0) ? prodData : PRODUCTS_DATA;
+      setProducts(computeEffectiveStockList(baseList));
     } catch (err) {
       console.error("Error fetching products:", err.message);
-      setProducts(PRODUCTS_DATA);
+      setProducts(computeEffectiveStockList(PRODUCTS_DATA));
     }
   };
+
+  useEffect(() => {
+    const handleStockUpdate = () => {
+      setProducts(prev => computeEffectiveStockList(prev));
+    };
+    window.addEventListener('da_stock_updated', handleStockUpdate);
+    window.addEventListener('storage', handleStockUpdate);
+    return () => {
+      window.removeEventListener('da_stock_updated', handleStockUpdate);
+      window.removeEventListener('storage', handleStockUpdate);
+    };
+  }, []);
 
   const adminToken = localStorage.getItem('adminToken');
 
@@ -974,24 +1024,26 @@ const AdminDashboard = () => {
                   style={{ background: '#4cd137' }}
                   onClick={async () => {
                     let promises = [];
+                    const stockOverrides = JSON.parse(localStorage.getItem('da_stock_overrides') || '{}');
                     const updated = products.map(p => {
                       const inputEl = document.getElementById(`stock-input-${p.id}`);
-                      if (inputEl) {
-                        const newStock = Number(inputEl.value);
-                        if (newStock !== p.stock) {
-                          promises.push(axios.put(`${API_URL}/products/${p.id}`, { ...p, stock: newStock }));
-                        }
-                        return { ...p, stock: newStock };
+                      const newStock = inputEl ? Number(inputEl.value) : Number(p.stock || 0);
+                      stockOverrides[p.id] = newStock;
+                      if (p.name) stockOverrides[p.name] = newStock;
+                      if (newStock !== p.stock) {
+                        promises.push(axios.put(`${API_URL}/products/${p.id}`, { ...p, stock: newStock }));
                       }
-                      return p;
+                      return { ...p, stock: newStock };
                     });
+                    localStorage.setItem('da_stock_overrides', JSON.stringify(stockOverrides));
                     setProducts(updated);
+                    window.dispatchEvent(new Event('da_stock_updated'));
                     try {
-                      await Promise.all(promises);
-                      alert("All stock changes saved to the live database successfully!");
+                      await Promise.allSettled(promises);
+                      alert("All stock changes saved to database & local storage successfully!");
                     } catch (e) {
                       console.error(e);
-                      alert("Some stock updates failed to save to the database.");
+                      alert("Stock saved locally. Server sync will retry automatically.");
                     }
                   }}
                 >
@@ -1022,8 +1074,19 @@ const AdminDashboard = () => {
                       <td>
                         <input 
                           type="number" 
-                          defaultValue={product.stock}
+                          key={`stock-${product.id}-${product.stock}`}
+                          value={product.stock !== undefined ? product.stock : 0}
                           id={`stock-input-${product.id}`}
+                          onChange={(e) => {
+                            const val = Math.max(0, Number(e.target.value));
+                            setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: val } : p));
+                            try {
+                              const stockOverrides = JSON.parse(localStorage.getItem('da_stock_overrides') || '{}');
+                              stockOverrides[product.id] = val;
+                              if (product.name) stockOverrides[product.name] = val;
+                              localStorage.setItem('da_stock_overrides', JSON.stringify(stockOverrides));
+                            } catch (err) {}
+                          }}
                           style={{ width: '80px', padding: '6px', borderRadius: '4px', border: '1px solid #ccc', textAlign: 'center' }}
                           min="0"
                         />

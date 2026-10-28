@@ -81,6 +81,34 @@ const Cart = ({ cartItems, setCartItems }) => {
     setCartItems(prev => prev.filter(item => item.id !== id));
   };
 
+  const deductOrderedStock = (items) => {
+    try {
+      const stockOverrides = JSON.parse(localStorage.getItem('da_stock_overrides') || '{}');
+      (items || []).forEach(item => {
+        const pId = item.id || item.product_id;
+        const pName = (item.name || '').trim();
+        const qty = Number(item.quantity) || 1;
+        
+        let curr = 50;
+        if (pId && stockOverrides[pId] !== undefined) {
+          curr = Number(stockOverrides[pId]);
+        } else if (pName && stockOverrides[pName] !== undefined) {
+          curr = Number(stockOverrides[pName]);
+        } else if (item.stock !== undefined) {
+          curr = Number(item.stock);
+        }
+
+        const nextStock = Math.max(0, curr - qty);
+        if (pId) stockOverrides[pId] = nextStock;
+        if (pName) stockOverrides[pName] = nextStock;
+      });
+      localStorage.setItem('da_stock_overrides', JSON.stringify(stockOverrides));
+      window.dispatchEvent(new Event('da_stock_updated'));
+    } catch (e) {
+      console.warn("Stock override deduction warning:", e);
+    }
+  };
+
   const placeOrder = async (e) => {
     e.preventDefault();
     if (cartItems.length === 0) return;
@@ -165,6 +193,9 @@ const Cart = ({ cartItems, setCartItems }) => {
         console.warn("Could not save to localStorage:", storageErr);
       }
 
+      // Deduct stock for ordered items
+      deductOrderedStock(cartItems);
+
       setOrderPlacedData(orderData);
       setCartItems([]);
 
@@ -190,6 +221,9 @@ const Cart = ({ cartItems, setCartItems }) => {
       const localOrders = JSON.parse(localStorage.getItem('da_orders') || '[]');
       localOrders.unshift(fallbackOrder);
       localStorage.setItem('da_orders', JSON.stringify(localOrders));
+
+      // Deduct stock for ordered items
+      deductOrderedStock(cartItems);
 
       setOrderPlacedData(fallbackOrder);
       setCartItems([]);

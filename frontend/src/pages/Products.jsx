@@ -22,7 +22,7 @@ const CATEGORIES = [
   { id: 'Snack', label: 'Snacks & Sticks', icon: '🍪' }
 ];
 
-// Helper to guarantee every stock item has wholesale discount badge, MRP, and retail margin
+// Helper to guarantee every stock item has wholesale discount badge, MRP, retail margin, and live stock calculation
 const ensureDiscount = (product) => {
   const price = Number(product.price) || 10;
   let original_price = Number(product.original_price);
@@ -39,12 +39,40 @@ const ensureDiscount = (product) => {
     discount_text = `${pct}% OFF`;
   }
 
+  let stock = Number(product.stock !== undefined ? product.stock : 50);
+  try {
+    const stockOverrides = JSON.parse(localStorage.getItem('da_stock_overrides') || '{}');
+    const localOrders = JSON.parse(localStorage.getItem('da_orders') || '[]');
+    const pId = product.id || product._id;
+    const pName = (product.name || '').trim().toLowerCase();
+
+    if (pId && stockOverrides[pId] !== undefined) {
+      stock = Number(stockOverrides[pId]);
+    } else if (product.name && stockOverrides[product.name] !== undefined) {
+      stock = Number(stockOverrides[product.name]);
+    } else {
+      let orderedQty = 0;
+      localOrders.forEach(ord => {
+        if (ord.status === 'CANCELLED') return;
+        (ord.items || []).forEach(item => {
+          const itemPid = item.id || item.product_id;
+          const itemName = (item.name || '').trim().toLowerCase();
+          if ((itemPid && itemPid === pId) || (itemName && itemName === pName)) {
+            orderedQty += Number(item.quantity) || 1;
+          }
+        });
+      });
+      stock = Math.max(0, stock - orderedQty);
+    }
+  } catch (e) {}
+
   return {
     ...product,
     price,
     original_price,
     discount_text,
-    margin: original_price - price
+    margin: original_price - price,
+    stock
   };
 };
 
@@ -82,6 +110,19 @@ export default function Products({ addToCart, cartItems = [], setCartItems }) {
       }
     };
     fetchLiveProducts();
+  }, []);
+
+  // Listen for real-time stock deductions & updates
+  useEffect(() => {
+    const handleStockUpdate = () => {
+      setProducts(prev => prev.map(ensureDiscount));
+    };
+    window.addEventListener('da_stock_updated', handleStockUpdate);
+    window.addEventListener('storage', handleStockUpdate);
+    return () => {
+      window.removeEventListener('da_stock_updated', handleStockUpdate);
+      window.removeEventListener('storage', handleStockUpdate);
+    };
   }, []);
 
   // Sync category with URL search param

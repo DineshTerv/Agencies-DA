@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Order = require('../models/Order');
+const Product = require('../models/Product');
 const User = require('../models/User');
 const { sendOrPrepareWhatsAppMessage } = require('../utils/whatsapp');
 const { sendOrderEmail, generateInvoiceHtml } = require('../utils/email');
@@ -61,6 +62,24 @@ exports.placeOrder = async (req, res) => {
     });
 
     const savedOrder = await newOrder.save();
+
+    // Automatically reduce product stock count in database for ordered items
+    for (const item of formattedItems) {
+      try {
+        const qty = Number(item.quantity) || 1;
+        const pId = item.product_id;
+        if (pId && mongoose.Types.ObjectId.isValid(pId)) {
+          await Product.findByIdAndUpdate(pId, { $inc: { stock: -qty } });
+        } else if (item.name) {
+          await Product.findOneAndUpdate(
+            { name: { $regex: new RegExp(`^${item.name.trim()}$`, 'i') } },
+            { $inc: { stock: -qty } }
+          );
+        }
+      } catch (stockErr) {
+        console.warn('Stock decrement notice for item:', item.name, stockErr.message);
+      }
+    }
 
     // Prepare or dispatch automated WhatsApp notification for the customer
     let whatsappResult = null;

@@ -179,6 +179,25 @@ const WorkerDashboard = () => {
       openWhatsApp(storePhone.trim(), msg, true);
     }
 
+    // Deduct stock for placed order
+    try {
+      const stockOverrides = JSON.parse(localStorage.getItem('da_stock_overrides') || '{}');
+      (cart || []).forEach(item => {
+        const pId = item.id;
+        const pName = (item.name || '').trim();
+        const qty = Number(item.quantity) || 1;
+        let curr = 50;
+        if (pId && stockOverrides[pId] !== undefined) curr = Number(stockOverrides[pId]);
+        else if (pName && stockOverrides[pName] !== undefined) curr = Number(stockOverrides[pName]);
+        else if (item.stock !== undefined) curr = Number(item.stock);
+        const nextStock = Math.max(0, curr - qty);
+        if (pId) stockOverrides[pId] = nextStock;
+        if (pName) stockOverrides[pName] = nextStock;
+      });
+      localStorage.setItem('da_stock_overrides', JSON.stringify(stockOverrides));
+      window.dispatchEvent(new Event('da_stock_updated'));
+    } catch (err) {}
+
     setCart([]);
     setStoreName('');
     setStorePhone('');
